@@ -9,7 +9,7 @@
 int main() {
     printf("한글: ");
     char c[512];
-    scanf_s("%s", c, 512);
+    scanf("%s", c);
     printf("%s", c);
 
     return 0;
