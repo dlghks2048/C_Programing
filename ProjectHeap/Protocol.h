@@ -8,10 +8,12 @@
 #define SERVER_PORT 9000
 
 // 객체의 상태 정의 (패킷 정의)
-#define IDLE      0
-#define MOVE      1
-#define ATTACK    2
-#define DIE       3
+#define IDLE        0
+#define MOVE        1
+#define ATTACK      2
+#define HIT         3
+#define DEFENSE     4
+#define PARRY       5
 
 // 2. 메인 패킷 구조체
 typedef struct {
