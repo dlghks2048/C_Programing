@@ -11,9 +11,9 @@
 #define IDLE        0
 #define MOVE        1
 #define ATTACK      2
-#define HIT         3
-#define DEFENSE     4
-#define PARRY       5
+#define HIT         3   //특수한 경우에만 보내는 패킷
+#define GUARD       4
+#define PARRY       5   //특수한 경우에만 보내는 패킷
 
 // 2. 메인 패킷 구조체
 typedef struct {
