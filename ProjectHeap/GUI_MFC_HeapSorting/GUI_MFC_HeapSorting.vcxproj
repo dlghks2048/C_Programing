@@ -184,6 +184,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="..\Protocol.h" />
+    <ClInclude Include="CPacketHeap.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="GUI_MFC_HeapSorting.h" />
     <ClInclude Include="GUI_MFC_HeapSortingDlg.h" />
@@ -192,6 +193,7 @@
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="CPacketHeap.c" />
     <ClCompile Include="GUI_MFC_HeapSorting.cpp" />
     <ClCompile Include="GUI_MFC_HeapSortingDlg.cpp" />
     <ClCompile Include="pch.cpp">
