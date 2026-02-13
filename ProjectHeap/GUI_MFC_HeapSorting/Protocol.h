@@ -20,4 +20,5 @@ typedef struct {
     long long timestamp; // 서버 발송 시각 (고정밀 타이머 값)
 } SIM_PACKET;
 
+
 #pragma pack(pop)
