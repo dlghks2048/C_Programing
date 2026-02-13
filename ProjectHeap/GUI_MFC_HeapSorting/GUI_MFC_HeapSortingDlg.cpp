@@ -153,3 +153,52 @@ HCURSOR CGUIMFCHeapSortingDlg::OnQueryDragIcon()
 	return static_cast<HCURSOR>(m_hIcon);
 }
 
+// 1. 캐릭터 그리기 함수
+void CGUIMFCHeapSortingDlg::DrawCharacter(CDC* pDC, int state, int frame)
+{
+	// m_pCharSprite는 헤더파일에 선언되어 있어야 합니다.
+	if (m_pCharSprite == NULL) {
+		COLORREF color = RGB(0, 255, 0); // IDLE
+		if (state == 2) color = RGB(255, 0, 0); // ATTACK 
+		if (state == 3) color = RGB(255, 255, 0); // PARRY
+
+		pDC->FillSolidRect(50, 50, 100, 64, color);
+		return;
+	}
+
+	Gdiplus::Graphics graphics(pDC->GetSafeHdc());
+	int srcX = frame * 100;
+	int srcY = state * 64;
+
+	graphics.DrawImage(m_pCharSprite,
+		Gdiplus::Rect(50, 50, 100, 64),
+		srcX, srcY, 100, 64,
+		Gdiplus::UnitPixel);
+}
+
+// 2. 핑 그래프 그리기 함수
+void CGUIMFCHeapSortingDlg::DrawPingGraph(CDC* pDC)
+{
+	CRect rect;
+	// 다이얼로그에 배치한 Picture Control의 ID를 사용합니다.
+	GetDlgItem(IDC_PING_GRAPH)->GetClientRect(&rect);
+
+	pDC->FillSolidRect(&rect, RGB(30, 30, 30)); // 배경색 (어두운 회색)
+
+	CPen pen(PS_SOLID, 2, RGB(0, 255, 255)); // 하늘색 선
+	CPen* pOldPen = pDC->SelectObject(&pen);
+
+	// m_historyCount와 m_latencyHistory는 헤더에 선언되어야 함
+	for (int i = 1; i < m_historyCount; i++) {
+		int x1 = (i - 1) * 5;
+		int x2 = i * 5;
+
+		// 그래프가 Picture Control 영역을 벗어나지 않도록 계산
+		int y1 = rect.Height() - (m_latencyHistory[i - 1] % rect.Height());
+		int y2 = rect.Height() - (m_latencyHistory[i] % rect.Height());
+
+		pDC->MoveTo(x1, y1);
+		pDC->LineTo(x2, y2);
+	}
+	pDC->SelectObject(pOldPen);
+}
