@@ -6,6 +6,11 @@
 
 #define MAX_HEAP_SIZE 1024
 
+// C 컴파일러라고 선언.
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef struct {
     SIM_PACKET heapArray[MAX_HEAP_SIZE];
     int size;
@@ -17,5 +22,9 @@ void InitHeap(PacketHeap* pHp);
 void PushHeap(PacketHeap* pHp, SIM_PACKET pkt);
 int PopHeap(PacketHeap* pHp, SIM_PACKET* pOutPkt); // 성공 시 1, 실패 시 0 반환
 void DestroyHeap(PacketHeap* pHp);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
