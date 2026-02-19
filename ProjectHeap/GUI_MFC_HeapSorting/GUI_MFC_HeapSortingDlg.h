@@ -38,15 +38,18 @@ protected:
 
 public:
 	// 함수 선언
-	void DrawCharacter(CDC* pDC, int state, int frame);
+	void DrawCharacter(CDC* pDC, int x, int y, int state, int frame);
 	void DrawPingGraph(CDC* pDC);
 
 private:
-	// 변수 선언
-	Gdiplus::Image* m_pCharSprite = nullptr; // 캐릭터 스프라이트 이미지
-	int m_latencyHistory[200] = { 0, };      // 핑 데이터 저장용 배열
-	int m_historyCount = 0;                  // 현재까지 쌓인 데이터 개수
-	int m_curState = 0;   // 현재 캐릭터 상태
-	int m_curFrame = 0;   // 현재 애니메이션 프레임
+	// 변수 선언(캐릭터)
+	Gdiplus::Image* m_pCharSprite = nullptr;	// 캐릭터 스프라이트 이미지
+	Gdiplus::Image* m_pSprites[6];				// 이미지 객체들을 담을 배열
+	int m_curState = 0;							// 현재 캐릭터 상태
+
+	// 변수 선언 Network
+	int m_latencyHistory[200] = { 0, };			// 핑 데이터 저장용 배열
+	int m_historyCount = 0;						// 현재까지 쌓인 데이터 개수
+	int m_curFrame = 0;							// 현재 애니메이션 프레임
 	PacketHeap m_packetHeap;
 };

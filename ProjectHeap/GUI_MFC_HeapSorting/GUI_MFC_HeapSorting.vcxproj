@@ -193,7 +193,9 @@
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="CPacketHeap.c" />
+    <ClCompile Include="CPacketHeap.c">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="GUI_MFC_HeapSorting.cpp" />
     <ClCompile Include="GUI_MFC_HeapSortingDlg.cpp" />
     <ClCompile Include="pch.cpp">
@@ -210,6 +212,13 @@
     <None Include="res\GUIMFCHeapSorting.rc2" />
   </ItemGroup>
   <ItemGroup>
+    <Image Include="res\Cheractor\Attack_KG.png" />
+    <Image Include="res\Cheractor\Hit_KG.png" />
+    <Image Include="res\Cheractor\Idle_KG.png" />
+    <Image Include="res\Cheractor\Parry_KG.png" />
+    <Image Include="res\Cheractor\Idle2_KG.png" />
+    <Image Include="res\Cheractor\Guard_KG.png" />
+    <Image Include="res\Cheractor\Move_KG.png" />
     <Image Include="res\GUI_MFC_HeapSorting.ico" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

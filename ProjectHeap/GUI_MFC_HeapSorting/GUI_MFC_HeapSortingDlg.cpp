@@ -74,7 +74,19 @@ BOOL CGUIMFCHeapSortingDlg::OnInitDialog()
 {
 	CDialogEx::OnInitDialog();
 
-	// 시스템 메뉴에 "정보..." 메뉴 항목을 추가합니다.
+	// 캐릭터 이미지 로드
+	CString fileNames[] = {
+		_T("Idle_KG.png"),   // IDLE (0)
+		_T("Move_KG.png"),   // MOVE (1)
+		_T("Attack_KG.png"), // ATTACK (2)
+		_T("Hit_KG.png"),    // HIT (3)
+		_T("Guard_KG.png"),  // GUARD (4)
+		_T("Parry_KG.png")   // PARRY (5)
+	};
+
+	for (int i = 0; i < 6; i++) {
+		m_pSprites[i] = Gdiplus::Image::FromFile(fileNames[i]);
+	}
 
 	// IDM_ABOUTBOX는 시스템 명령 범위에 있어야 합니다.
 	ASSERT((IDM_ABOUTBOX & 0xFFF0) == IDM_ABOUTBOX);
@@ -154,25 +166,22 @@ HCURSOR CGUIMFCHeapSortingDlg::OnQueryDragIcon()
 }
 
 // 1. 캐릭터 그리기 함수
-void CGUIMFCHeapSortingDlg::DrawCharacter(CDC* pDC, int state, int frame)
+void CGUIMFCHeapSortingDlg::DrawCharacter(CDC* pDC, int x, int y, int state, int frame)
 {
-	// m_pCharSprite는 헤더파일에 선언되어 있어야 합니다.
-	if (m_pCharSprite == NULL) {
-		COLORREF color = RGB(0, 255, 0); // IDLE
-		if (state == 2) color = RGB(255, 0, 0); // ATTACK 
-		if (state == 3) color = RGB(255, 255, 0); // PARRY
-
-		pDC->FillSolidRect(50, 50, 100, 64, color);
-		return;
-	}
+	// 예외 처리: 범위를 벗어나거나 이미지가 없는 경우
+	if (state < 0 || state > 5 || m_pSprites[state] == NULL) return;
 
 	Gdiplus::Graphics graphics(pDC->GetSafeHdc());
-	int srcX = frame * 100;
-	int srcY = state * 64;
 
-	graphics.DrawImage(m_pCharSprite,
-		Gdiplus::Rect(50, 50, 100, 64),
-		srcX, srcY, 100, 64,
+	// 각 파일이 1줄짜리 스프라이트 시트이므로 y는 항상 0
+	int frameWidth = 100;
+	int frameHeight = 64;
+	int srcX = frame * frameWidth;
+	int srcY = 0;
+
+	graphics.DrawImage(m_pSprites[state],
+		Gdiplus::Rect(x, y, frameWidth, frameHeight),
+		srcX, srcY, frameWidth, frameHeight,
 		Gdiplus::UnitPixel);
 }
 
