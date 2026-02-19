@@ -7,6 +7,8 @@
 #include "CPacketHeap.h"
 #pragma comment(lib, "gdiplus.lib")
 
+#define CHARACTOR_HEIGHT 64
+
 // CGUIMFCHeapSortingDlg 대화 상자
 class CGUIMFCHeapSortingDlg : public CDialogEx
 {

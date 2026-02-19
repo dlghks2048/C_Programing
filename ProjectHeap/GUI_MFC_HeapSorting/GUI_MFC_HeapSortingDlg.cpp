@@ -187,7 +187,7 @@ void CGUIMFCHeapSortingDlg::OnPaint()
 		memDC.FillSolidRect(&rc, RGB(255, 255, 255));
 
 		// 3. 메모리 DC에 그리기
-		DrawCharacter(&memDC, 0, 0, m_testState, m_curFrame);
+		DrawCharacter(&memDC, 0, rc.Height() - CHARACTOR_HEIGHT, m_testState, m_curFrame);
 
 		// 4. 완성된 메모리 도화지를 실제 화면(Picture Control)에 복사
 		CDC* pControlDC = pImgView->GetDC();
