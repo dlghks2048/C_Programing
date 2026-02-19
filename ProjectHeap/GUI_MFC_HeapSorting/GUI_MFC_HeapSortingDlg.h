@@ -56,6 +56,7 @@ private:
 	int m_curFrame;								// 현재 프레임 번호
 	int m_enemyFrame;							// 적 프레임 번호
 	int m_maxFrames[MAX_STATE];					// 각 이미지의 최대 프레임
+	bool m_isXPressed = false;
 
 	// 변수 선언 Network
 	int m_currentPing = 0;

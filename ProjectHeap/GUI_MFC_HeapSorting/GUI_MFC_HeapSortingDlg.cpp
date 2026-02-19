@@ -318,8 +318,15 @@ void CGUIMFCHeapSortingDlg::OnTimer(UINT_PTR nIDEvent)
 				m_curFrame = 0;
 			}
 			else if (m_curState == ATTACK || m_curState == HIT || m_curState == PARRY) {
-				m_curState = IDLE; // 단발성 액션 끝 -> 평소 상태로
-				m_curFrame = 0;
+				// 동작이 끝났을 때 방어 키를 꾹 누르고 있었다면?
+				if (m_isXPressed) {
+					m_curState = 4; // 바로 방어 유지(IDLE2) 상태로 전이
+					m_curFrame = 0;
+				}
+				else {
+					m_curState = IDLE;
+					m_curFrame = 0;
+				}
 			}
 			else {
 				m_curFrame = 0; // IDLE, MOVE, IDLE2는 무한 루프
@@ -354,21 +361,26 @@ void CGUIMFCHeapSortingDlg::OnTimer(UINT_PTR nIDEvent)
 
 void CGUIMFCHeapSortingDlg::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 {
-	// 이미 맞고 있거나(HIT), 패링(PARRY) 중일 때는 입력을 무시하는 로직을 넣으면 더 자연스럽습니다.
-	if (m_curState == HIT || m_curState == PARRY) return;
+	if (nChar == 'X' || nChar == 'x') m_isXPressed = true;
+
+	if (m_curState == ATTACK || m_curState == HIT || m_curState == PARRY)
+	{
+		return;
+	}
 
 	switch (nChar)
 	{
 	case VK_LEFT:
 	case VK_RIGHT:
-		m_curState = MOVE;
+		// 이동은 평시(IDLE)나 가드 대기(IDLE2) 상태에서만 가능하게 제한
+		if (m_curState == IDLE || m_curState == 6 || m_curState == MOVE) {
+			m_curState = MOVE;
+		}
 		break;
 	case 'Z': // 공격
 	case 'z':
-		if (m_curState != ATTACK) {
-			m_curState = ATTACK;
-			m_curFrame = 0; // 공격 시작 시 프레임 초기화
-		}
+		m_curState = ATTACK;
+		m_curFrame = 0;
 		break;
 	case 'X': // 방어
 	case 'x':
@@ -395,6 +407,7 @@ void CGUIMFCHeapSortingDlg::OnKeyUp(UINT nChar, UINT nRepCnt, UINT nFlags)
 		}
 	}
 	else if (nChar == 'X' || nChar == 'x') {
+		m_isXPressed = false;
 		// 현재 방어 중(방패 드는 중 또는 든 채 대기 중)일 때만 IDLE로 복귀
 		if (m_curState == GUARD || m_curState == 6) {
 			m_curState = IDLE;
