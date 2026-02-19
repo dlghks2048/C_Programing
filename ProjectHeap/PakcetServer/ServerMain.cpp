@@ -7,19 +7,12 @@
 #include <stdlib.h>
 #include <vector>
 #include <algorithm> // std::shuffle용
+#include "../Protocol.h"
 
 #pragma comment(lib, "ws2_32")
 
 #define SERVERPORT 9000
 #define BUFSIZE 256
-
-// 클라이언트와 약속한 패킷 구조체 (헤더파일 공유 권장)
-typedef struct {
-    int type;            // 상태 (IDLE, ATTACK 등)
-    int frame;           // 애니메이션 프레임 번호
-    int sequence;        // 힙 정렬을 위한 시퀀스 번호
-    long long timestamp; // 보낸 시간
-} SIM_PACKET;
 
 // 소켓 함수 오류 출력
 void err_display(const char* msg) {
@@ -68,7 +61,7 @@ int main() {
             err_display("recvfrom()");
             continue;
         }
-
+        
         SIM_PACKET* recvPkt = (SIM_PACKET*)buf;
         char IPAddr[INET_ADDRSTRLEN];
         inet_ntop(AF_INET, &clientaddr.sin_addr, IPAddr, sizeof(IPAddr));
@@ -80,7 +73,7 @@ int main() {
         for (int i = 0; i < 10; i++) {
             SIM_PACKET p;
             p.type = 2; // ATTACK 상태
-            p.frame = i;
+            p.curFrame = i;
             p.sequence = nextSeq++;
             p.timestamp = GetTickCount64();
             packetList.push_back(p);
@@ -92,7 +85,7 @@ int main() {
         printf("[발송] 뒤섞인 프레임 패킷 10개를 전송합니다...\n");
         for (auto& p : packetList) {
             sendto(sock, (const char*)&p, sizeof(SIM_PACKET), 0, (struct sockaddr*)&clientaddr, sizeof(clientaddr));
-            printf("  -> 발송 완료: Frame[%d] | Seq[%d]\n", p.frame, p.sequence);
+            printf("  -> 발송 완료: Frame[%d] | Seq[%d]\n", p.curFrame, p.sequence);
             Sleep(10); // 너무 빠르면 UDP 드랍 발생 가능성이 있으니 살짝 여유
         }
     }
