@@ -167,20 +167,31 @@ void CGUIMFCHeapSortingDlg::OnPaint()
 	{
 		CPaintDC dc(this);
 		CWnd* pImgView = GetDlgItem(IDC_SIM_VIEW);
+		if (!pImgView) return;
 
-		if (pImgView != NULL)
-		{
-			CDC* pControlDC = pImgView->GetDC();
+		CRect rc;
+		pImgView->GetClientRect(&rc);
 
-			CRect rc;
-			pImgView->GetClientRect(&rc);
-			pControlDC->FillSolidRect(&rc, RGB(240, 240, 240)); // 배경색으로 밀기
+		// 1. 메모리 DC와 비트맵 생성 (임시 도화지)
+		CDC memDC;
+		memDC.CreateCompatibleDC(&dc);
+		CBitmap bmp;
+		bmp.CreateCompatibleBitmap(&dc, rc.Width(), rc.Height());
+		CBitmap* pOldBmp = memDC.SelectObject(&bmp);
 
-			// 현재 m_testState에 맞는 이미지를 m_curFrame에 맞춰 그림
-			DrawCharacter(pControlDC, 10, 10, m_testState, m_curFrame);
+		// 2. 메모리 DC 배경 청소
+		memDC.FillSolidRect(&rc, RGB(255, 255, 255));
 
-			pImgView->ReleaseDC(pControlDC);
-		}
+		// 3. 메모리 DC에 그리기
+		DrawCharacter(&memDC, 0, 0, m_testState, m_curFrame);
+
+		// 4. 완성된 메모리 도화지를 실제 화면(Picture Control)에 복사
+		CDC* pControlDC = pImgView->GetDC();
+		pControlDC->BitBlt(0, 0, rc.Width(), rc.Height(), &memDC, 0, 0, SRCCOPY);
+
+		// 5. 정리
+		pImgView->ReleaseDC(pControlDC);
+		memDC.SelectObject(pOldBmp);
 	}
 }
 
