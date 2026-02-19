@@ -87,6 +87,10 @@ BOOL CGUIMFCHeapSortingDlg::OnInitDialog()
 
 	for (int i = 0; i < 6; i++) {
 		m_pSprites[i] = Gdiplus::Image::FromFile(fileNames[i]);
+		if (m_pSprites[i]->GetLastStatus() == Gdiplus::Ok) {
+			// 가로 길이를 100(한 프레임 너비)으로 나눠서 최대 프레임 계산
+			m_maxFrames[i] = m_pSprites[i]->GetWidth() / 100;
+		}
 
 		// 이미지 로드 실패 시 디버그 출력 (출력창에서 확인 가능)
 		if (m_pSprites[i]->GetLastStatus() != Gdiplus::Ok) {
@@ -254,16 +258,12 @@ void CGUIMFCHeapSortingDlg::OnTimer(UINT_PTR nIDEvent)
 	if (nIDEvent == 1) {
 		m_curFrame++;
 
-		// 현재 상태의 최대 프레임 수 (이미지 가로 크기 / 100)를 체크
-		// 일단 모든 파일이 가로 600픽셀(6프레임)이라고 가정하면:
-		if (m_curFrame >= 6) {
+		// 현재 상태(m_testState)의 최대 프레임 수를 사용
+		if (m_curFrame >= m_maxFrames[m_testState]) {
 			m_curFrame = 0;
-			m_testState++; // 다음 동작으로 변경
-
-			if (m_testState > 5) m_testState = 0; // 마지막 동작이면 다시 처음으로
+			m_testState = (m_testState + 1) % 6;
 		}
-
-		Invalidate(FALSE); // 화면 갱신 (OnPaint 호출)
+		Invalidate(FALSE);
 	}
 	CDialogEx::OnTimer(nIDEvent);
 }

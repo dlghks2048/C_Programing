@@ -48,8 +48,9 @@ private:
 	int m_curState = 0;							// 현재 캐릭터 상태
 
 	// 애니메이션 조절 변수
-	int m_testState;  // 현재 출력 중인 상태 (0: IDLE, 1: MOVE...)
-	int m_curFrame;   // 현재 프레임 번호
+	int m_testState;							// 현재 출력 중인 상태 (0: IDLE, 1: MOVE...)
+	int m_curFrame;								// 현재 프레임 번호
+	int m_maxFrames[6];							// 각 이미지의 최대 프레임
 
 	// 변수 선언 Network
 	int m_latencyHistory[200] = { 0, };			// 핑 데이터 저장용 배열
