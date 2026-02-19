@@ -7,12 +7,17 @@
 #include <stdlib.h>
 #include <vector>
 #include <algorithm> // std::shuffle용
+#include <thread>
+#include <process.h>
 #include "../Protocol.h"
+#include "ServerMain.h"
 
 #pragma comment(lib, "ws2_32")
 
 #define SERVERPORT 9000
 #define BUFSIZE 256
+
+
 
 // 소켓 함수 오류 출력
 void err_display(const char* msg) {
@@ -22,6 +27,59 @@ void err_display(const char* msg) {
         (LPSTR)&lpMsgBuf, 0, NULL);
     printf("[%s] %s\n", msg, (char*)lpMsgBuf);
     LocalFree(lpMsgBuf);
+}
+
+// [전담 스레드] 특정 클라이언트에게 무한히 패킷을 쏘는 역할
+unsigned int WINAPI StreamThread(LPVOID arg) {
+    THREAD_PARAM* param = (THREAD_PARAM*)arg;
+    SOCKET sock = param->sock;
+    sockaddr_in clientaddr = param->clientaddr;
+    int addrlen = sizeof(clientaddr);
+
+    int nextSeq = 0;
+
+    char IPAddr[INET_ADDRSTRLEN];
+    inet_ntop(AF_INET, &clientaddr.sin_addr, IPAddr, sizeof(IPAddr));
+    printf("[%s:%d] 전용 스트리밍 스레드 시작!\n", IPAddr, ntohs(clientaddr.sin_port));
+
+    delete param; // 동적 할당된 메모리 해제
+
+    while (1) {
+        // 5개씩 묶어서 셔플 전송
+        std::vector<SIM_PACKET> batch;
+        for (int i = 0; i < 5; i++) {
+            SIM_PACKET p;
+            p.type = ATTACK;
+            p.curFrame = i;
+            p.sequence = nextSeq++;
+            p.timestamp = GetTickCount64();
+            batch.push_back(p);
+        }
+
+        std::random_shuffle(batch.begin(), batch.end());
+
+        // 다이어트된 사이즈로 발송
+        for (auto& p : batch) {
+            int retval = sendto(sock, (const char*)&p, sizeof(SIM_PACKET), 0,
+                (struct sockaddr*)&clientaddr, addrlen);
+
+            if (retval == SOCKET_ERROR) {
+                printf("[%s] 클라이언트 연결 끊김으로 판단, 스레드 종료.\n", IPAddr);
+                return 0; // 클라이언트가 소켓을 닫거나 문제가 생기면 스레드 자폭
+            }
+        }
+
+        // 스트리밍 속도 조절 (초당 약 100개 패킷)
+        Sleep(50);
+    }
+    return 0;
+}
+
+// 클라이언트 식별을 위한 키 생성 함수 (IP:Port)
+std::string GetClientKey(sockaddr_in& addr) {
+    char ip[INET_ADDRSTRLEN];
+    inet_ntop(AF_INET, &addr.sin_addr, ip, sizeof(ip));
+    return std::string(ip) + ":" + std::to_string(ntohs(addr.sin_port));
 }
 
 int main() {
@@ -45,49 +103,31 @@ int main() {
     retval = bind(sock, (struct sockaddr*)&serveraddr, sizeof(serveraddr));
     if (retval == SOCKET_ERROR) err_display("bind()");
 
-    printf("--- [아방가르드] 패킷 정렬 시뮬레이션 서버 가동 ---\n");
+    printf("--- 패킷 정렬 시뮬레이션 서버 가동 ---\n");
     printf("포트 번호: %d (UDP IPv4)\n", SERVERPORT);
 
-    struct sockaddr_in clientaddr;
-    int addrlen;
-    char buf[BUFSIZE];
-    int nextSeq = 0;
-
     while (1) {
-        addrlen = sizeof(clientaddr);
-        // 클라이언트로부터 신호 대기 (예: "공격 패킷 줘!")
-        retval = recvfrom(sock, buf, BUFSIZE, 0, (struct sockaddr*)&clientaddr, &addrlen);
-        if (retval == SOCKET_ERROR) {
-            err_display("recvfrom()");
+        sockaddr_in clientaddr;
+        int addrlen = sizeof(clientaddr);
+        SIM_PACKET trigger;
+
+        int retval = recvfrom(sock, (char*)&trigger, sizeof(SIM_PACKET), 0,
+            (struct sockaddr*)&clientaddr, &addrlen);
+
+        // 이미 관리 중인 클라이언트인지 확인
+        std::string key = GetClientKey(clientaddr);
+        if (g_clientList.find(key) != g_clientList.end()) {
+            printf("[Info] %s는 이미 스트리밍 중입니다.\n", key.c_str());
             continue;
         }
-        
-        SIM_PACKET* recvPkt = (SIM_PACKET*)buf;
-        char IPAddr[INET_ADDRSTRLEN];
-        inet_ntop(AF_INET, &clientaddr.sin_addr, IPAddr, sizeof(IPAddr));
-        printf("\n[클라이언트 요청 수신] %s:%d\n", IPAddr, ntohs(clientaddr.sin_port));
 
-        // --- 패킷 셔플링 시뮬레이션 로직 ---
-        // 공격 애니메이션 10개 프레임을 생성하여 뒤섞어 보냅니다.
-        std::vector<SIM_PACKET> packetList;
-        for (int i = 0; i < 10; i++) {
-            SIM_PACKET p;
-            p.type = 2; // ATTACK 상태
-            p.curFrame = i;
-            p.sequence = nextSeq++;
-            p.timestamp = GetTickCount64();
-            packetList.push_back(p);
-        }
+        // 새로운 클라이언트라면 리스트에 등록하고 스레드 생성
+        g_clientList[key] = true;
 
-        // 의도적으로 순서 뒤섞기 (Shuffle)
-        std::random_shuffle(packetList.begin(), packetList.end());
-
-        printf("[발송] 뒤섞인 프레임 패킷 10개를 전송합니다...\n");
-        for (auto& p : packetList) {
-            sendto(sock, (const char*)&p, sizeof(SIM_PACKET), 0, (struct sockaddr*)&clientaddr, sizeof(clientaddr));
-            printf("  -> 발송 완료: Frame[%d] | Seq[%d]\n", p.curFrame, p.sequence);
-            Sleep(10); // 너무 빠르면 UDP 드랍 발생 가능성이 있으니 살짝 여유
-        }
+        THREAD_PARAM* param = new THREAD_PARAM;
+        param->sock = sock;
+        param->clientaddr = clientaddr;
+        _beginthreadex(NULL, 0, StreamThread, param, 0, NULL);
     }
 
     closesocket(sock);
