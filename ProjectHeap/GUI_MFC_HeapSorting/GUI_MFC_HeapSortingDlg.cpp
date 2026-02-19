@@ -77,12 +77,12 @@ BOOL CGUIMFCHeapSortingDlg::OnInitDialog()
 
 	// 캐릭터 이미지 로드
 	CString fileNames[] = {
-		_T("res\\Cheractor\\Idle_KG.png"),   // IDLE (0)
-		_T("res\\Cheractor\\Move_KG.png"),   // MOVE (1)
-		_T("res\\Cheractor\\Attack_KG.png"), // ATTACK (2)
-		_T("res\\Cheractor\\Hit_KG.png"),    // HIT (3)
-		_T("res\\Cheractor\\Guard_KG.png"),  // GUARD (4)
-		_T("res\\Cheractor\\Parry_KG.png")   // PARRY (5)
+		_T("res\\Character\\Idle_KG.png"),   // IDLE (0)
+		_T("res\\Character\\Move_KG.png"),   // MOVE (1)
+		_T("res\\Character\\Attack_KG.png"), // ATTACK (2)
+		_T("res\\Character\\Hit_KG.png"),    // HIT (3)
+		_T("res\\Character\\Guard_KG.png"),  // GUARD (4)
+		_T("res\\Character\\Parry_KG.png")   // PARRY (5)
 	};
 
 	for (int i = 0; i < 6; i++) {
