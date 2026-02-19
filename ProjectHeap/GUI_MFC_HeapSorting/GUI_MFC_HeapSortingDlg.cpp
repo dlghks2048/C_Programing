@@ -190,11 +190,17 @@ void CGUIMFCHeapSortingDlg::OnPaint()
 		bmp.CreateCompatibleBitmap(&dc, rc.Width(), rc.Height());
 		CBitmap* pOldBmp = memDC.SelectObject(&bmp);
 
-		// 2. 메모리 DC 배경 청소
+		// 메모리 DC 배경 청소(흰색 바탕)
 		memDC.FillSolidRect(&rc, RGB(255, 255, 255));
 
-		// 3. 메모리 DC에 그리기
-		DrawCharacter(&memDC, 20, rc.Height() - CHARACTOR_HEIGHT, m_curState, m_curFrame);
+		//캐릭터 위치 조정 변수
+		int centerX = rc.Width() / 2;
+		int groundY = rc.Height() - CHARACTOR_HEIGHT; // 바닥에서 50px 정도 띄움
+
+		// 메모리 DC에 그리기(내 캐릭터)
+		DrawCharacter(&memDC, centerX - 100, groundY, m_curState, m_curFrame, false);
+		// 상대 캐릭터 그리기 (서버가 준 프레임 정보 사용)
+		DrawCharacter(&memDC, centerX, groundY, m_enemyState, m_enemyFrame, true);
 
 		// 4. 완성된 메모리 도화지를 실제 화면(Picture Control)에 복사
 		CDC* pControlDC = pImgView->GetDC();
@@ -214,44 +220,63 @@ HCURSOR CGUIMFCHeapSortingDlg::OnQueryDragIcon()
 }
 
 // 1. 캐릭터 그리기 함수
-void CGUIMFCHeapSortingDlg::DrawCharacter(CDC* pDC, int x, int y, int state, int frame)
+void CGUIMFCHeapSortingDlg::DrawCharacter(CDC* pDC, int x, int y, int state, int frame, bool isEnemy)
 {
-	// 예외 처리: 범위를 벗어나거나 이미지가 없는 경우
-	if (state < 0 || state > MAX_STATE-1 || m_pSprites[state] == NULL) return;
+	// 예외 처리 
+	if (state < 0 || state > MAX_STATE - 1 || m_pSprites[state] == NULL) return;
 
 	Gdiplus::Graphics graphics(pDC->GetSafeHdc());
 
-	// 각 파일이 1줄짜리 스프라이트 시트이므로 y는 항상 0
+	// 스프라이트 시트 내 프레임 위치 계산
 	int frameWidth = 100;
 	int frameHeight = 64;
 	int srcX = frame * frameWidth;
 	int srcY = 0;
 
+	Gdiplus::ImageAttributes imgAtt;
+	if (isEnemy) {
+		// 빨간색 필터 적용 (ColorMatrix)
+		Gdiplus::ColorMatrix clrMatrix = {
+			1.2f, 0.0f, 0.0f, 0.0f, 0.0f, // Red 강조
+			0.0f, 0.3f, 0.0f, 0.0f, 0.0f, // Green 축소
+			0.0f, 0.0f, 0.3f, 0.0f, 0.0f, // Blue 축소
+			0.0f, 0.0f, 0.0f, 1.0f, 0.0f, // Alpha
+			0.0f, 0.0f, 0.0f, 0.0f, 1.0f
+		};
+		imgAtt.SetColorMatrix(&clrMatrix);
+
+		// 좌우 반전 (캐릭터 중앙을 기준으로 뒤집기)
+		graphics.TranslateTransform((float)x + 50.0f, (float)y + 32.0f);
+		graphics.ScaleTransform(-1.0f, 1.0f);
+		graphics.TranslateTransform(-(float)x - 50.0f, -(float)y - 32.0f);
+	}
+
+
+	// 이미지 그리기
 	graphics.DrawImage(m_pSprites[state],
 		Gdiplus::Rect(x, y, frameWidth, frameHeight),
 		srcX, srcY, frameWidth, frameHeight,
-		Gdiplus::UnitPixel);
+		Gdiplus::UnitPixel, &imgAtt); // imgAtt 추가
 
-	// 머리 위 상태/핑 텍스트 그리기
-	CString strStatus;
-	// 상태 이름을 문자열로 변환 (예: IDLE, ATTACK 등)
+	// 변환 초기화(다음 그리기 덮어쓰기 방기)
+	graphics.ResetTransform();
+
+	// 텍스트 출력 로직 
 	const TCHAR* stateNames[] = { _T("IDLE"), _T("MOVE"), _T("ATTACK"), _T("HIT"), _T("GUARD"), _T("PARRY"), _T("GUARDING") };
+	m_currentPing = 75; // 나중에 서버 연동 시 변수로 대체
 
-	// 핑 값은 나중에 변수에서 가져오도록 하고 지금은 테스트용으로 75ms 출력
-	m_currentPing = 75;
-
-	// 상태 이름 출력 (윗줄)
 	CString strStateName;
 	strStateName.Format(_T("[%s]"), stateNames[state]);
-	//핑 수치 출력 (아랫줄) - '\n' 없이 숫자만 깔끔하게!
 	CString strPingValue;
 	strPingValue.Format(_T("%d ms"), m_currentPing);
 
+	pDC->SetBkMode(TRANSPARENT);
+	pDC->SetTextColor(isEnemy ? RGB(255, 0, 0) : RGB(0, 0, 0)); // 적군은 빨간색 텍스트
 
-	pDC->SetTextAlign(TA_CENTER); // 중앙 정렬 설정
-	pDC->TextOut(x + 50, y - 40, strStateName); // 캐릭터 중앙(50) 기준
+	pDC->SetTextAlign(TA_CENTER);
+	pDC->TextOut(x + 50, y - 40, strStateName);
 	pDC->TextOut(x + 50, y - 22, strPingValue);
-	pDC->SetTextAlign(TA_LEFT);   // 다시 원복
+	pDC->SetTextAlign(TA_LEFT);
 }
 
 // 2. 핑 그래프 그리기 함수

@@ -18,6 +18,7 @@
 // 2. 메인 패킷 구조체
 typedef struct {
     int type;            // 메시지 타입(객채의 상태)
+    int curFrame;        // 몆 번째 프레임인지
     int sequence;        // 패킷 순서 (1, 2, 3...) -> 힙 정렬 후 유실 확인용
     long long timestamp; // 서버 발송 시각 (고정밀 타이머 값)
 } SIM_PACKET;
