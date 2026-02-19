@@ -13,9 +13,6 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
-    <Filter Include="리소스 파일\Cheractor">
-      <UniqueIdentifier>{8e33a8b8-79ac-41bc-8249-a882bc51d221}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="GUI_MFC_HeapSorting.h">
@@ -70,27 +67,6 @@
   <ItemGroup>
     <Image Include="res\GUI_MFC_HeapSorting.ico">
       <Filter>리소스 파일</Filter>
-    </Image>
-    <Image Include="res\Cheractor\Attack_KG.png">
-      <Filter>리소스 파일\Cheractor</Filter>
-    </Image>
-    <Image Include="res\Cheractor\Hit_KG.png">
-      <Filter>리소스 파일\Cheractor</Filter>
-    </Image>
-    <Image Include="res\Cheractor\Idle_KG.png">
-      <Filter>리소스 파일\Cheractor</Filter>
-    </Image>
-    <Image Include="res\Cheractor\Parry_KG.png">
-      <Filter>리소스 파일\Cheractor</Filter>
-    </Image>
-    <Image Include="res\Cheractor\Idle2_KG.png">
-      <Filter>리소스 파일\Cheractor</Filter>
-    </Image>
-    <Image Include="res\Cheractor\Guard_KG.png">
-      <Filter>리소스 파일\Cheractor</Filter>
-    </Image>
-    <Image Include="res\Cheractor\Move_KG.png">
-      <Filter>리소스 파일\Cheractor</Filter>
     </Image>
   </ItemGroup>
 </Project>

@@ -31,6 +31,8 @@ public:
 // 구현입니다.
 protected:
 	DECLARE_MESSAGE_MAP()
+public:
+//	afx_msg void OnLButtonDown(UINT nFlags, CPoint point);
 };
 
 CAboutDlg::CAboutDlg() : CDialogEx(IDD_ABOUTBOX)
@@ -43,6 +45,7 @@ void CAboutDlg::DoDataExchange(CDataExchange* pDX)
 }
 
 BEGIN_MESSAGE_MAP(CAboutDlg, CDialogEx)
+//	ON_WM_LBUTTONDOWN()
 END_MESSAGE_MAP()
 
 
@@ -66,6 +69,9 @@ BEGIN_MESSAGE_MAP(CGUIMFCHeapSortingDlg, CDialogEx)
 	ON_WM_PAINT()
 	ON_WM_QUERYDRAGICON()
 	ON_WM_TIMER()
+	ON_WM_KEYDOWN()
+	ON_WM_KEYUP()
+	ON_WM_LBUTTONDOWN()
 END_MESSAGE_MAP()
 
 
@@ -77,15 +83,16 @@ BOOL CGUIMFCHeapSortingDlg::OnInitDialog()
 
 	// 캐릭터 이미지 로드
 	CString fileNames[] = {
-		_T("res\\Character\\Idle_KG.png"),   // IDLE (0)
-		_T("res\\Character\\Move_KG.png"),   // MOVE (1)
-		_T("res\\Character\\Attack_KG.png"), // ATTACK (2)
-		_T("res\\Character\\Hit_KG.png"),    // HIT (3)
-		_T("res\\Character\\Guard_KG.png"),  // GUARD (4)
-		_T("res\\Character\\Parry_KG.png")   // PARRY (5)
+		_T("res\\Character\\Idle_KG.png"),		// IDLE (0)
+		_T("res\\Character\\Move_KG.png"),		// MOVE (1)
+		_T("res\\Character\\Attack_KG.png"),	// ATTACK (2)
+		_T("res\\Character\\Hit_KG.png"),		// HIT (3)
+		_T("res\\Character\\Guard_KG.png"),		// GUARD (4)
+		_T("res\\Character\\Parry_KG.png"),		// PARRY (5)
+		_T("res\\Character\\Idle2_KG.png")		// IDLE2 (6) == GUARD_IDLE
 	};
 
-	for (int i = 0; i < 6; i++) {
+	for (int i = 0; i < MAX_STATE; i++) {
 		m_pSprites[i] = Gdiplus::Image::FromFile(fileNames[i]);
 		if (m_pSprites[i]->GetLastStatus() == Gdiplus::Ok) {
 			// 가로 길이를 100(한 프레임 너비)으로 나눠서 최대 프레임 계산
@@ -187,7 +194,7 @@ void CGUIMFCHeapSortingDlg::OnPaint()
 		memDC.FillSolidRect(&rc, RGB(255, 255, 255));
 
 		// 3. 메모리 DC에 그리기
-		DrawCharacter(&memDC, 0, rc.Height() - CHARACTOR_HEIGHT, m_testState, m_curFrame);
+		DrawCharacter(&memDC, 0, rc.Height() - CHARACTOR_HEIGHT, m_curState, m_curFrame);
 
 		// 4. 완성된 메모리 도화지를 실제 화면(Picture Control)에 복사
 		CDC* pControlDC = pImgView->GetDC();
@@ -210,7 +217,7 @@ HCURSOR CGUIMFCHeapSortingDlg::OnQueryDragIcon()
 void CGUIMFCHeapSortingDlg::DrawCharacter(CDC* pDC, int x, int y, int state, int frame)
 {
 	// 예외 처리: 범위를 벗어나거나 이미지가 없는 경우
-	if (state < 0 || state > 5 || m_pSprites[state] == NULL) return;
+	if (state < 0 || state > MAX_STATE-1 || m_pSprites[state] == NULL) return;
 
 	Gdiplus::Graphics graphics(pDC->GetSafeHdc());
 
@@ -258,12 +265,134 @@ void CGUIMFCHeapSortingDlg::OnTimer(UINT_PTR nIDEvent)
 	if (nIDEvent == 1) {
 		m_curFrame++;
 
-		// 현재 상태(m_testState)의 최대 프레임 수를 사용
-		if (m_curFrame >= m_maxFrames[m_testState]) {
-			m_curFrame = 0;
-			m_testState = (m_testState + 1) % 6;
+		// 현재 상태의 최대 프레임에 도달했을 때
+		if (m_curFrame >= m_maxFrames[m_curState]) {
+			if (m_curState == GUARD) {
+				m_curState = 6; // 방패 들기 끝 -> 든 채로 대기(IDLE2)
+				m_curFrame = 0;
+			}
+			else if (m_curState == ATTACK || m_curState == HIT || m_curState == PARRY) {
+				m_curState = IDLE; // 단발성 액션 끝 -> 평소 상태로
+				m_curFrame = 0;
+			}
+			else {
+				m_curFrame = 0; // IDLE, MOVE, IDLE2는 무한 루프
+			}
 		}
+
+		// 2. 가상 패킷 상호작용 로직 (주석 참고)
+		/*
+		SIM_PACKET receivedPacket;
+		if (PeekPacket(&receivedPacket)) { // 패킷이 왔다면
+			if (receivedPacket.type == ATTACK) {
+				// 공격 패킷을 받았을 때 나의 상태에 따른 판정
+				if (m_testState == GUARD) {
+					// 패링 판정: 공격 시각과 내 방어 시각 차이가 0.15초(150ms) 이내라면
+					if (GetTimestamp() - receivedPacket.timestamp < 150) {
+						m_testState = PARRY;
+						m_curFrame = 0;
+					}
+				} else if (m_testState != PARRY) {
+					// 무방비 상태에서 공격 패킷을 받으면 HIT 상태로 전환
+					m_testState = HIT;
+					m_curFrame = 0;
+				}
+			}
+		}
+		*/
+
 		Invalidate(FALSE);
 	}
 	CDialogEx::OnTimer(nIDEvent);
+}
+
+void CGUIMFCHeapSortingDlg::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
+{
+	// 이미 맞고 있거나(HIT), 패링(PARRY) 중일 때는 입력을 무시하는 로직을 넣으면 더 자연스럽습니다.
+	if (m_curState == HIT || m_curState == PARRY) return;
+
+	switch (nChar)
+	{
+	case VK_LEFT:
+	case VK_RIGHT:
+		m_curState = MOVE;
+		break;
+	case 'Z': // 공격
+	case 'z':
+		if (m_curState != ATTACK) {
+			m_curState = ATTACK;
+			m_curFrame = 0; // 공격 시작 시 프레임 초기화
+		}
+		break;
+	case 'X': // 방어
+	case 'x':
+		// 이미 방어 중(GUARD나 IDLE2)이라면 다시 시작하지 않음
+		if (m_curState != GUARD && m_curState != 6) {
+			m_curState = GUARD;
+			m_curFrame = 0;
+		}
+		break;
+	}
+
+	Invalidate(FALSE);
+	CDialogEx::OnKeyDown(nChar, nRepCnt, nFlags);
+}
+
+void CGUIMFCHeapSortingDlg::OnKeyUp(UINT nChar, UINT nRepCnt, UINT nFlags)
+{
+	// 키를 떼면 다시 IDLE로 복귀
+	if (nChar == VK_LEFT || nChar == VK_RIGHT) {
+		// 현재 걷고 있는 중일 때만 IDLE로 복귀
+		if (m_curState == MOVE) {
+			m_curState = IDLE;
+			m_curFrame = 0;
+		}
+	}
+	else if (nChar == 'X' || nChar == 'x') {
+		// 현재 방어 중(방패 드는 중 또는 든 채 대기 중)일 때만 IDLE로 복귀
+		if (m_curState == GUARD || m_curState == 6) {
+			m_curState = IDLE;
+			m_curFrame = 0;
+		}
+	}
+	CDialogEx::OnKeyUp(nChar, nRepCnt, nFlags);
+}
+
+BOOL CGUIMFCHeapSortingDlg::PreTranslateMessage(MSG* pMsg)
+{
+	if (pMsg->message == WM_KEYDOWN || pMsg->message == WM_KEYUP)
+	{
+		// 1. 캐릭터 조작에 사용되는 키인지 먼저 확인
+		if (pMsg->wParam == VK_LEFT || pMsg->wParam == VK_RIGHT ||
+			pMsg->wParam == 'Z' || pMsg->wParam == 'X' ||
+			pMsg->wParam == 'z' || pMsg->wParam == 'x')
+		{
+			// 이 키들은 포커스가 어디에 있든(에디트 박스 안이라도) 캐릭터가 가로챕니다.
+			if (pMsg->message == WM_KEYDOWN) OnKeyDown((UINT)pMsg->wParam, 0, 0);
+			else OnKeyUp((UINT)pMsg->wParam, 0, 0);
+
+			return TRUE; // 여기서 TRUE를 리턴해야 슬라이더나 에디트 박스가 키를 못 훔쳐갑니다.
+		}
+
+		// 2. 캐릭터 키가 아닌 다른 키(숫자 입력 등)인 경우에만 포커스된 컨트롤로 넘깁니다.
+		CWnd* pFocusWnd = GetFocus();
+		if (pFocusWnd && pFocusWnd->GetSafeHwnd())
+		{
+			UINT nID = pFocusWnd->GetDlgCtrlID();
+			if (nID == IDC_EDIT_DELAY || nID == IDC_SLIDER_DELAY)
+			{
+				return CDialogEx::PreTranslateMessage(pMsg);
+			}
+		}
+	}
+	return CDialogEx::PreTranslateMessage(pMsg);
+}
+
+
+void CGUIMFCHeapSortingDlg::OnLButtonDown(UINT nFlags, CPoint point)
+{
+	// 포커스 강제 회수
+	this->SetFocus();
+
+	CDialogEx::OnLButtonDown(nFlags, point);
 }

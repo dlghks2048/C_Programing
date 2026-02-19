@@ -8,6 +8,7 @@
 #pragma comment(lib, "gdiplus.lib")
 
 #define CHARACTOR_HEIGHT 64
+#define MAX_STATE 7
 
 // CGUIMFCHeapSortingDlg 대화 상자
 class CGUIMFCHeapSortingDlg : public CDialogEx
@@ -46,13 +47,12 @@ public:
 private:
 	// 변수 선언(캐릭터)
 	Gdiplus::Image* m_pCharSprite = nullptr;	// 캐릭터 스프라이트 이미지
-	Gdiplus::Image* m_pSprites[6];				// 이미지 객체들을 담을 배열
+	Gdiplus::Image* m_pSprites[MAX_STATE];		// 이미지 객체들을 담을 배열
 	int m_curState = 0;							// 현재 캐릭터 상태
 
 	// 애니메이션 조절 변수
-	int m_testState;							// 현재 출력 중인 상태 (0: IDLE, 1: MOVE...)
 	int m_curFrame;								// 현재 프레임 번호
-	int m_maxFrames[6];							// 각 이미지의 최대 프레임
+	int m_maxFrames[MAX_STATE];					// 각 이미지의 최대 프레임
 
 	// 변수 선언 Network
 	int m_latencyHistory[200] = { 0, };			// 핑 데이터 저장용 배열
@@ -61,4 +61,8 @@ private:
 
 public:
 	afx_msg void OnTimer(UINT_PTR nIDEvent);
+	afx_msg void OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags);
+	afx_msg void OnKeyUp(UINT nChar, UINT nRepCnt, UINT nFlags);
+	virtual BOOL PreTranslateMessage(MSG* pMsg);
+	afx_msg void OnLButtonDown(UINT nFlags, CPoint point);
 };
