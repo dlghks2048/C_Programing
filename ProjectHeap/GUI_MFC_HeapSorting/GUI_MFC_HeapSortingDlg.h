@@ -55,6 +55,7 @@ private:
 	int m_maxFrames[MAX_STATE];					// 각 이미지의 최대 프레임
 
 	// 변수 선언 Network
+	int m_currentPing = 0;
 	int m_latencyHistory[200] = { 0, };			// 핑 데이터 저장용 배열
 	int m_historyCount = 0;						// 현재까지 쌓인 데이터 개수
 	PacketHeap m_packetHeap;

@@ -194,7 +194,7 @@ void CGUIMFCHeapSortingDlg::OnPaint()
 		memDC.FillSolidRect(&rc, RGB(255, 255, 255));
 
 		// 3. 메모리 DC에 그리기
-		DrawCharacter(&memDC, 0, rc.Height() - CHARACTOR_HEIGHT, m_curState, m_curFrame);
+		DrawCharacter(&memDC, 20, rc.Height() - CHARACTOR_HEIGHT, m_curState, m_curFrame);
 
 		// 4. 완성된 메모리 도화지를 실제 화면(Picture Control)에 복사
 		CDC* pControlDC = pImgView->GetDC();
@@ -231,6 +231,27 @@ void CGUIMFCHeapSortingDlg::DrawCharacter(CDC* pDC, int x, int y, int state, int
 		Gdiplus::Rect(x, y, frameWidth, frameHeight),
 		srcX, srcY, frameWidth, frameHeight,
 		Gdiplus::UnitPixel);
+
+	// 머리 위 상태/핑 텍스트 그리기
+	CString strStatus;
+	// 상태 이름을 문자열로 변환 (예: IDLE, ATTACK 등)
+	const TCHAR* stateNames[] = { _T("IDLE"), _T("MOVE"), _T("ATTACK"), _T("HIT"), _T("GUARD"), _T("PARRY"), _T("GUARDING") };
+
+	// 핑 값은 나중에 변수에서 가져오도록 하고 지금은 테스트용으로 75ms 출력
+	m_currentPing = 75;
+
+	// 상태 이름 출력 (윗줄)
+	CString strStateName;
+	strStateName.Format(_T("[%s]"), stateNames[state]);
+	//핑 수치 출력 (아랫줄) - '\n' 없이 숫자만 깔끔하게!
+	CString strPingValue;
+	strPingValue.Format(_T("%d ms"), m_currentPing);
+
+
+	pDC->SetTextAlign(TA_CENTER); // 중앙 정렬 설정
+	pDC->TextOut(x + 50, y - 40, strStateName); // 캐릭터 중앙(50) 기준
+	pDC->TextOut(x + 50, y - 22, strPingValue);
+	pDC->SetTextAlign(TA_LEFT);   // 다시 원복
 }
 
 // 2. 핑 그래프 그리기 함수
