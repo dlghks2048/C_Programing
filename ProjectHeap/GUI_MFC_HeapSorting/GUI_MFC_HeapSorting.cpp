@@ -40,6 +40,7 @@ CGUIMFCHeapSortingApp theApp;
 
 BOOL CGUIMFCHeapSortingApp::InitInstance()
 {
+	Gdiplus::GdiplusStartup(&m_gdiplusToken, &m_gdiplusStartupInput, NULL); //엔진켜기 
 	// Windows XP에서는 InitCommonControlsEx()를 필요로 합니다.
 	// 사용하도록 지정하는 경우, Windows XP 상에서 반드시 InitCommonControlsEx()가 필요합니다.
 	// InitCommonControlsEx()를 사용하지 않으면 창을 만들 수 없습니다.
@@ -99,9 +100,8 @@ BOOL CGUIMFCHeapSortingApp::InitInstance()
 #if !defined(_AFXDLL) && !defined(_AFX_NO_MFC_CONTROLS_IN_DIALOGS)
 	ControlBarCleanUp();
 #endif
-
-	// 대화 상자가 닫혔으므로 응용 프로그램의 메시지 펌프를 시작하지 않고 응용 프로그램을 끝낼 수 있도록 FALSE를
-	// 반환합니다.
+	//대화상자 종료 시
+	Gdiplus::GdiplusShutdown(m_gdiplusToken); //엔진 크기
 	return FALSE;
 }
 

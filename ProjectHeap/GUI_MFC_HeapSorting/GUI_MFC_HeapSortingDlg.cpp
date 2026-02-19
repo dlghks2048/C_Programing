@@ -65,6 +65,7 @@ BEGIN_MESSAGE_MAP(CGUIMFCHeapSortingDlg, CDialogEx)
 	ON_WM_SYSCOMMAND()
 	ON_WM_PAINT()
 	ON_WM_QUERYDRAGICON()
+	ON_WM_TIMER()
 END_MESSAGE_MAP()
 
 
@@ -76,17 +77,27 @@ BOOL CGUIMFCHeapSortingDlg::OnInitDialog()
 
 	// 캐릭터 이미지 로드
 	CString fileNames[] = {
-		_T("Idle_KG.png"),   // IDLE (0)
-		_T("Move_KG.png"),   // MOVE (1)
-		_T("Attack_KG.png"), // ATTACK (2)
-		_T("Hit_KG.png"),    // HIT (3)
-		_T("Guard_KG.png"),  // GUARD (4)
-		_T("Parry_KG.png")   // PARRY (5)
+		_T("res\\Cheractor\\Idle_KG.png"),   // IDLE (0)
+		_T("res\\Cheractor\\Move_KG.png"),   // MOVE (1)
+		_T("res\\Cheractor\\Attack_KG.png"), // ATTACK (2)
+		_T("res\\Cheractor\\Hit_KG.png"),    // HIT (3)
+		_T("res\\Cheractor\\Guard_KG.png"),  // GUARD (4)
+		_T("res\\Cheractor\\Parry_KG.png")   // PARRY (5)
 	};
 
 	for (int i = 0; i < 6; i++) {
 		m_pSprites[i] = Gdiplus::Image::FromFile(fileNames[i]);
+
+		// 이미지 로드 실패 시 디버그 출력 (출력창에서 확인 가능)
+		if (m_pSprites[i]->GetLastStatus() != Gdiplus::Ok) {
+			TRACE(_T("FAILED to load: %s\n"), fileNames[i]);
+		}
+		else {
+			TRACE(_T("Sucsece to load: %s\n"), fileNames[i]);
+		}
 	}
+
+	SetTimer(1, 100, NULL);
 
 	// IDM_ABOUTBOX는 시스템 명령 범위에 있어야 합니다.
 	ASSERT((IDM_ABOUTBOX & 0xFFF0) == IDM_ABOUTBOX);
@@ -154,7 +165,22 @@ void CGUIMFCHeapSortingDlg::OnPaint()
 	}
 	else
 	{
-		CDialogEx::OnPaint();
+		CPaintDC dc(this);
+		CWnd* pImgView = GetDlgItem(IDC_SIM_VIEW);
+
+		if (pImgView != NULL)
+		{
+			CDC* pControlDC = pImgView->GetDC();
+
+			CRect rc;
+			pImgView->GetClientRect(&rc);
+			pControlDC->FillSolidRect(&rc, RGB(240, 240, 240)); // 배경색으로 밀기
+
+			// 현재 m_testState에 맞는 이미지를 m_curFrame에 맞춰 그림
+			DrawCharacter(pControlDC, 10, 10, m_testState, m_curFrame);
+
+			pImgView->ReleaseDC(pControlDC);
+		}
 	}
 }
 
@@ -210,4 +236,23 @@ void CGUIMFCHeapSortingDlg::DrawPingGraph(CDC* pDC)
 		pDC->LineTo(x2, y2);
 	}
 	pDC->SelectObject(pOldPen);
+}
+
+void CGUIMFCHeapSortingDlg::OnTimer(UINT_PTR nIDEvent)
+{
+	if (nIDEvent == 1) {
+		m_curFrame++;
+
+		// 현재 상태의 최대 프레임 수 (이미지 가로 크기 / 100)를 체크
+		// 일단 모든 파일이 가로 600픽셀(6프레임)이라고 가정하면:
+		if (m_curFrame >= 6) {
+			m_curFrame = 0;
+			m_testState++; // 다음 동작으로 변경
+
+			if (m_testState > 5) m_testState = 0; // 마지막 동작이면 다시 처음으로
+		}
+
+		Invalidate(FALSE); // 화면 갱신 (OnPaint 호출)
+	}
+	CDialogEx::OnTimer(nIDEvent);
 }

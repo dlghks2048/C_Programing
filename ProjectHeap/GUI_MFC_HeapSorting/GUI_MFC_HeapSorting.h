@@ -9,7 +9,8 @@
 #endif
 
 #include "resource.h"		// 주 기호입니다.
-
+#include <gdiplus.h>
+#pragma comment(lib, "gdiplus.lib")
 
 // CGUIMFCHeapSortingApp:
 // 이 클래스의 구현에 대해서는 GUI_MFC_HeapSorting.cpp을(를) 참조하세요.
@@ -17,6 +18,9 @@
 
 class CGUIMFCHeapSortingApp : public CWinApp
 {
+private:
+	Gdiplus::GdiplusStartupInput m_gdiplusStartupInput;
+	ULONG_PTR m_gdiplusToken;
 public:
 	CGUIMFCHeapSortingApp();
 

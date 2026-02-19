@@ -47,9 +47,15 @@ private:
 	Gdiplus::Image* m_pSprites[6];				// 이미지 객체들을 담을 배열
 	int m_curState = 0;							// 현재 캐릭터 상태
 
+	// 애니메이션 조절 변수
+	int m_testState;  // 현재 출력 중인 상태 (0: IDLE, 1: MOVE...)
+	int m_curFrame;   // 현재 프레임 번호
+
 	// 변수 선언 Network
 	int m_latencyHistory[200] = { 0, };			// 핑 데이터 저장용 배열
 	int m_historyCount = 0;						// 현재까지 쌓인 데이터 개수
-	int m_curFrame = 0;							// 현재 애니메이션 프레임
 	PacketHeap m_packetHeap;
+
+public:
+	afx_msg void OnTimer(UINT_PTR nIDEvent);
 };
