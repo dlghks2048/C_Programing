@@ -1,6 +1,7 @@
 #include "CNetwork.h"
 #include <process.h>
 #include <stdio.h>
+#include <string.h>
 
 CNetwork::CNetwork()
     : m_sock(INVALID_SOCKET), m_hThread(NULL), m_bIsRunning(false), m_nPing(0) {
@@ -12,26 +13,26 @@ CNetwork::~CNetwork() {
 
 bool CNetwork::InitAndConnect(const char* szIP, int nPort) {
     WSADATA wsa;
-    WSAStartup(MAKEWORD(2, 2), &wsa);
+    if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0) return false;
 
-    // UDP 소켓 생성 (connect 하지 않음!)
     m_sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    if (m_sock == INVALID_SOCKET) return false;
 
-    // 서버 메인 주소 설정
     m_serverAddr.sin_family = AF_INET;
     m_serverAddr.sin_addr.s_addr = inet_addr(szIP);
     m_serverAddr.sin_port = htons(nPort);
 
-    // [인사 패킷 전송]
+    // [규약 준수] 변수명은 무조건 type
     SIM_PACKET helloPkt;
-    helloPkt.type = HELLOW;
+    memset(&helloPkt, 0, sizeof(SIM_PACKET));
+    helloPkt.type = HELLOW; // 100
+    helloPkt.curFrame = 0;
+    helloPkt.sequence = 0;
+    helloPkt.timestamp = 0;
 
-    sendto(m_sock, (char*)&helloPkt, sizeof(SIM_PACKET), 0,
+    sendto(m_sock, (const char*)&helloPkt, sizeof(SIM_PACKET), 0,
         (sockaddr*)&m_serverAddr, sizeof(m_serverAddr));
 
-    printf("서버(%s:%d)에 연결 패킷 전송.\n", szIP, nPort);
-
-    // 수신 스레드 가동
     m_bIsRunning = true;
     m_hThread = (HANDLE)_beginthreadex(NULL, 0, ReceiveThread, this, 0, NULL);
 
@@ -39,12 +40,12 @@ bool CNetwork::InitAndConnect(const char* szIP, int nPort) {
 }
 
 void CNetwork::Disconnect() {
+    if (!m_bIsRunning) return;
+
+    // 종료 신호 (-1) 전송
+    SendPacket(-1);
+
     m_bIsRunning = false;
-
-    // UDP는 Disconnect 시 "나 이제 간다"라고 서버에 알려주는 게 매너입니다.
-    int nBye = 0;
-    SendPacket(nBye);
-
     if (m_sock != INVALID_SOCKET) {
         closesocket(m_sock);
         m_sock = INVALID_SOCKET;
@@ -55,38 +56,58 @@ void CNetwork::Disconnect() {
         CloseHandle(m_hThread);
         m_hThread = NULL;
     }
-
     WSACleanup();
 }
 
-void CNetwork::SendPacket(int nType) {
+void CNetwork::SendPacket(int nType) { // 여기서 인자로 받는 nType은 그냥 숫자임
     if (m_sock == INVALID_SOCKET) return;
 
-    // UDP 전송 (connect를 했으므로 send를 써도 무방합니다)
-    send(m_sock, (char*)&nType, sizeof(int), 0);
+    SIM_PACKET pkt;
+    memset(&pkt, 0, sizeof(SIM_PACKET));
+
+    // 구조체 멤버 변수명은 무조건 type!
+    pkt.type = nType;
+    pkt.curFrame = 0;
+    pkt.sequence = 0;
+    pkt.timestamp = 0;
+
+    send(m_sock, (const char*)&pkt, sizeof(SIM_PACKET), 0);
 }
 
 bool CNetwork::GetNextFrame(SIM_PACKET* pOutPkt, bool bIgnoreBuffer) {
-    // 힙에 쌓인 패킷이 Threshold(5개) 미만이면 리턴 (지터 버퍼링)
     if (!bIgnoreBuffer && (int)m_heap.size < m_nBufferThreshold) {
         return false;
     }
-
-    // m_heap.pop()이나 m_heap.Extract() 같은 함수가 필요합니다.
-    // return m_heap.Pop(pOutPkt);
-    return false;
+    return PopHeap(&m_heap, pOutPkt);
 }
 
 UINT WINAPI CNetwork::ReceiveThread(LPVOID pParam) {
     CNetwork* pThis = (CNetwork*)pParam;
+    sockaddr_in fromAddr;
+    int addrLen = sizeof(fromAddr);
+    bool bConnected = false;
 
     while (pThis->m_bIsRunning) {
-        SIM_PACKET pkt;
+        SIM_PACKET recvPkt;
+        int nRev = 0;
 
-        int nRev = recv(pThis->m_sock, (char*)&pkt, sizeof(SIM_PACKET), 0);
+        if (!bConnected) {
+            nRev = recvfrom(pThis->m_sock, (char*)&recvPkt, sizeof(SIM_PACKET), 0,
+                (sockaddr*)&fromAddr, &addrLen);
+
+            // 구조체 변수명 type 체크
+            if (nRev > 0 && recvPkt.type == HELLOW) {
+                connect(pThis->m_sock, (sockaddr*)&fromAddr, sizeof(fromAddr));
+                bConnected = true;
+                continue;
+            }
+        }
+        else {
+            nRev = recv(pThis->m_sock, (char*)&recvPkt, sizeof(SIM_PACKET), 0);
+        }
 
         if (nRev > 0) {
-
+            PushHeap(&pThis->m_heap, recvPkt);
         }
     }
     return 0;
