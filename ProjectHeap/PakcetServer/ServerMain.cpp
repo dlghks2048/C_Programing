@@ -201,6 +201,7 @@ unsigned int WINAPI StreamThread(LPVOID arg) {
 
 THREAD_EXIT:
     DestroyHeap(pClientHeap);
+    delete pClientHeap;
     closesocket(privateSock);
     return 0;
 }
