@@ -1,4 +1,4 @@
-Network#pragma once
+#pragma once
 #include <winsock2.h>
 #include "CPacketHeap.h"
 #include "../Protocol.h"
