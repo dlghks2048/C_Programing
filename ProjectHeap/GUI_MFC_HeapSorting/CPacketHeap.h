@@ -1,3 +1,5 @@
+#pragma once
+
 #ifndef __CPACKET_HEAP_H__
 #define __CPACKET_HEAP_H__
 
