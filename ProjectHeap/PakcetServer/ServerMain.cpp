@@ -94,6 +94,13 @@ unsigned int WINAPI StreamThread(LPVOID arg) {
     sockaddr_in clientAddr = pParam->clientaddr;
     delete pParam; // 파라미터 메모리 해제
 
+    // clientAddr의 주소를 가진 클라이언트에만 보내겠다는 선언(binding + connetc)
+    if (connect(privateSock, (sockaddr*)&clientAddr, sizeof(clientAddr)) == SOCKET_ERROR) {
+        printf("Connect Error!\n");
+        closesocket(privateSock);
+        return 0;
+    }
+
     char IPAddr[INET_ADDRSTRLEN];
     inet_ntop(AF_INET, &clientAddr.sin_addr, IPAddr, sizeof(IPAddr));
     int port = ntohs(clientAddr.sin_port);
