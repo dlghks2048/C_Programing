@@ -18,6 +18,6 @@ typedef struct THREAD_PARAM {
 void err_display(const char* msg);                                          //소켓 오류 함수 출력
 unsigned int WINAPI StreamThread(LPVOID arg);                               // 패킷 전송 스레드
 std::string GetClientKey(sockaddr_in& addr);                                //클라이언트 식별을 위한 키 식별 함수
-void GenerateNextPacket(SIM_PACKET& p, int& state, int& frame, int& seq);   //랜덤 패킷 생성 함수
+void GenerateNextPacket(SIM_PACKET& p, int& state, int& frame, int& seq, long long lastEcho);   //랜덤 패킷 생성 함수
 void UpdateStatus();                                                        //콘솔창 출력(간단한 명령어)
 unsigned int WINAPI ControlThread(LPVOID arg);                              // 키보드 입력 및 화면 갱신 전용 스레드
