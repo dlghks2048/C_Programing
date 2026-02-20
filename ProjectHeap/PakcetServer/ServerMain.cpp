@@ -70,6 +70,8 @@ int main() {
         param->sock = sock;
         param->clientaddr = clientaddr;
         _beginthreadex(NULL, 0, StreamThread, param, 0, NULL);
+
+        Sleep(100);
     }
 
     closesocket(sock);
@@ -90,8 +92,8 @@ void err_display(const char* msg) {
 // [전담 스레드] 특정 클라이언트에게 무한히 패킷을 쏘는 역할
 unsigned int WINAPI StreamThread(LPVOID arg) {
     THREAD_PARAM* pParam = (THREAD_PARAM*)arg;
-    SOCKET privateSock = pParam->sock;
     sockaddr_in clientAddr = pParam->clientaddr;
+    SOCKET privateSock = socket(AF_INET, SOCK_DGRAM, 0);        //새 소캣 생성
     delete pParam; // 파라미터 메모리 해제
 
     // clientAddr의 주소를 가진 클라이언트에만 보내겠다는 선언(binding + connetc)
@@ -127,8 +129,8 @@ unsigned int WINAPI StreamThread(LPVOID arg) {
     long long lastEcho = 0;
 
     // 클라이언트 전용 힙 생성 및 초기화
-    PacketHeap clientHeap;
-    InitHeap(&clientHeap);
+    PacketHeap* pClientHeap = new PacketHeap();
+    InitHeap(pClientHeap);
 
     printf("[%s:%d] 전용 스트림 스레드 시작\n", IPAddr, port);
 
@@ -136,12 +138,12 @@ unsigned int WINAPI StreamThread(LPVOID arg) {
         // [수신] recv 사용 (넌블로킹)
         SIM_PACKET recvPkt;
         while (recv(privateSock, (char*)&recvPkt, sizeof(SIM_PACKET), 0) > 0) {
-            PushHeap(&clientHeap, recvPkt);
+            PushHeap(pClientHeap, recvPkt);
         }
 
         //[판정 및 상태 우선순위] 힙에서 꺼내어 처리
         SIM_PACKET sortedPkt;
-        while (PopHeap(&clientHeap, &sortedPkt)) {
+        while (PopHeap(pClientHeap, &sortedPkt)) {
             if (sortedPkt.type == -1) { // 클라이언트의 종료 신호 (나 뒤짐)
                 printf("[%s:%d] 클라이언트가 스스로 종료를 알렸습니다.\n", IPAddr, port);
                 goto THREAD_EXIT;
@@ -198,7 +200,7 @@ unsigned int WINAPI StreamThread(LPVOID arg) {
     }
 
 THREAD_EXIT:
-    DestroyHeap(&clientHeap);
+    DestroyHeap(pClientHeap);
     closesocket(privateSock);
     return 0;
 }
