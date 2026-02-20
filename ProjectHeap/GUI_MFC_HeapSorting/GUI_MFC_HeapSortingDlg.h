@@ -6,6 +6,7 @@
 #include <gdiplus.h>
 #include "CPacketHeap.h"
 #include "../Protocol.h"
+#include "CNetwork.h"
 #pragma comment(lib, "gdiplus.lib")
 
 #define CHARACTOR_HEIGHT 64
@@ -60,6 +61,7 @@ private:
 	bool m_isXPressed = false;
 
 	// 변수 선언 Network
+	CNetwork m_net;			
 	int m_currentPing = 0;
 	int m_latencyHistory[200] = { 0, };			// 핑 데이터 저장용 배열
 	int m_historyCount = 0;						// 현재까지 쌓인 데이터 개수

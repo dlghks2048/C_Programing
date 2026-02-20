@@ -6,6 +6,7 @@
 #include "../Protocol.h"
 #include <windows.h> // CRITICAL_SECTION 사용을 위해 필요(쓰래드)
 
+
 #define MAX_HEAP_SIZE 1024
 
 // C 컴파일러라고 선언.
@@ -13,7 +14,7 @@
 extern "C" {
 #endif
 
-typedef struct {
+typedef struct PacketHeap {
     SIM_PACKET heapArray[MAX_HEAP_SIZE];
     int size;
     CRITICAL_SECTION cs; // 스레드 동기화용

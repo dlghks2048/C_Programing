@@ -7,6 +7,7 @@
 #include "GUI_MFC_HeapSorting.h"
 #include "GUI_MFC_HeapSortingDlg.h"
 #include "afxdialogex.h"
+#include "CNetwork.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -81,6 +82,11 @@ BOOL CGUIMFCHeapSortingDlg::OnInitDialog()
 {
 	CDialogEx::OnInitDialog();
 
+	// 네트워크 초기화 및 서버 접속
+	if (m_net.InitAndConnect(SERVER_IP, SERVER_PORT)) {
+		printf("서버 접속 시도 중... (IP: %s, Port: %d)\n", SERVER_IP, SERVER_PORT);
+	}
+
 	// 캐릭터 이미지 로드
 	CString fileNames[] = {
 		_T("res\\Character\\Idle_KG.png"),		// IDLE (0)
@@ -107,8 +113,10 @@ BOOL CGUIMFCHeapSortingDlg::OnInitDialog()
 			TRACE(_T("Sucsece to load: %s\n"), fileNames[i]);
 		}
 	}
-
+	// 애니메이션 타이머
 	SetTimer(1, 50, NULL);
+	// 네트워크 로직 전용 타이머 
+	SetTimer(2, 30, NULL);
 
 	// IDM_ABOUTBOX는 시스템 명령 범위에 있어야 합니다.
 	ASSERT((IDM_ABOUTBOX & 0xFFF0) == IDM_ABOUTBOX);
@@ -355,6 +363,29 @@ void CGUIMFCHeapSortingDlg::OnTimer(UINT_PTR nIDEvent)
 		*/
 
 		Invalidate(FALSE);
+	}
+	// --- [ID 2] 네트워크 통신 (30ms) ---
+	else if (nIDEvent == 2) {
+		// 서버로 내 현재 상태 보고 
+		m_net.SendPacket(m_curState, m_curFrame);
+
+		// 힙에서 서버 패킷 꺼내오기 (상대 캐릭터 갱신)
+		SIM_PACKET enemyPkt;
+		if (m_net.GetNextFrame(&enemyPkt, false)) {
+			m_enemyState = enemyPkt.type;
+			m_enemyFrame = enemyPkt.curFrame;
+
+			// 실시간 핑 업데이트 및 히스토리 기록
+			m_currentPing = m_net.GetCurrentPing();
+
+			if (m_historyCount < 200) {
+				m_latencyHistory[m_historyCount++] = m_currentPing;
+			}
+			else {
+				for (int i = 0; i < 199; i++) m_latencyHistory[i] = m_latencyHistory[i + 1];
+				m_latencyHistory[199] = m_currentPing;
+			}
+		}
 	}
 	CDialogEx::OnTimer(nIDEvent);
 }

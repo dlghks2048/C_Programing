@@ -6,7 +6,9 @@
 
 CNetwork::CNetwork()
     : m_sock(INVALID_SOCKET), m_hThread(NULL), m_bIsRunning(false),
-    m_nPing(0), m_nNextSequence(0) { // 시퀀스 0으로 초기화
+    m_nPing(0), m_nNextSequence(0), m_serverAddr{ 0 } 
+{
+    InitHeap(&m_heap);
 }
 
 CNetwork::~CNetwork() {
@@ -21,8 +23,10 @@ bool CNetwork::InitAndConnect(const char* szIP, int nPort) {
     if (m_sock == INVALID_SOCKET) return false;
 
     m_serverAddr.sin_family = AF_INET;
-    m_serverAddr.sin_addr.s_addr = inet_addr(szIP);
     m_serverAddr.sin_port = htons(nPort);
+    if (inet_pton(AF_INET, szIP, &m_serverAddr.sin_addr) != 1) {
+        return false;
+    }
 
     // 패킷 초기화
     SIM_PACKET helloPkt;
