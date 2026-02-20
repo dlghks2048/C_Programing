@@ -101,6 +101,17 @@ unsigned int WINAPI StreamThread(LPVOID arg) {
         return 0;
     }
 
+    // [답장 패킷 전송] 
+    SIM_PACKET helloPkt;
+    memset(&helloPkt, 0, sizeof(SIM_PACKET));
+    helloPkt.type = HELLOW; 
+    if (send(privateSock, (char*)&helloPkt, sizeof(SIM_PACKET), 0) == SOCKET_ERROR) {
+        printf("[Error] 답장 패킷 전송 실패\n");
+        closesocket(privateSock);
+        return 0;
+    }
+    // [답장 패킷 전송] 
+
     char IPAddr[INET_ADDRSTRLEN];
     inet_ntop(AF_INET, &clientAddr.sin_addr, IPAddr, sizeof(IPAddr));
     int port = ntohs(clientAddr.sin_port);
