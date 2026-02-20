@@ -9,8 +9,9 @@
 #include <algorithm> // std::shuffle용
 #include <thread>
 #include <process.h>
-#include "../Protocol.h"
 #include "ServerMain.h"
+#include "sequenceMinHeap.h"
+#include "../Protocol.h"
 
 #pragma comment(lib, "ws2_32")
 
@@ -82,62 +83,82 @@ void err_display(const char* msg) {
 
 // [전담 스레드] 특정 클라이언트에게 무한히 패킷을 쏘는 역할
 unsigned int WINAPI StreamThread(LPVOID arg) {
-    // 1. 파라미터 복사 및 메모리 해제 (누수 방지)
-    THREAD_PARAM* param = (THREAD_PARAM*)arg;
-    sockaddr_in clientaddr = param->clientaddr;
-    SOCKET mainSock = param->sock; // 사실 이건 이제 안 써도 됨 (전용 소켓 쓸 거니까)
-    delete param;
+    THREAD_PARAM* pParam = (THREAD_PARAM*)arg;
+    SOCKET privateSock = pParam->sock;
+    sockaddr_in clientAddr = pParam->clientaddr;
+    delete pParam; // 파라미터 메모리 해제
 
-    int nextSeq = 0; // 시퀀스 초기화 (이 클라이언트만의 번호)
-    int addrlen = sizeof(clientaddr);
     char IPAddr[INET_ADDRSTRLEN];
-    inet_ntop(AF_INET, &clientaddr.sin_addr, IPAddr, sizeof(IPAddr));
+    inet_ntop(AF_INET, &clientAddr.sin_addr, IPAddr, sizeof(IPAddr));
+    int port = ntohs(clientAddr.sin_port);
 
-    // 2.  전용 소켓 생성 및 고정
-    SOCKET privateSock = socket(AF_INET, SOCK_DGRAM, 0);
-    if (connect(privateSock, (struct sockaddr*)&clientaddr, addrlen) == SOCKET_ERROR) {
-        closesocket(privateSock);
-        return 0;
-    }
+    //[넌블로킹 설정] recv가 패킷 없어도 바로 리턴하게 함
+    u_long mode = 1;
+    ioctlsocket(privateSock, FIONBIO, &mode);
 
-    printf("[%s:%d] 전용 채널 생성 완료. 스트리밍 시작!\n", IPAddr, ntohs(clientaddr.sin_port));
+    // 스레드별 상태 관리 변수
+    int currentState = IDLE;
+    int currentFrame = 0;
+    int nextSeq = 0;
 
-    // 3. 무한 루프 시작
+    // 클라이언트 전용 힙 생성 및 초기화
+    PacketHeap clientHeap;
+    InitHeap(&clientHeap);
+
+    printf("[%s:%d] 전용 스트림 스레드 시작\n", IPAddr, port);
+
     while (1) {
-        // [중요] 기존의 패킷 생성 및 셔플링 로직 복구
-        std::vector<SIM_PACKET> batch;
-        for (int i = 0; i < 5; i++) {
-            SIM_PACKET p;
-            p.type = ATTACK;
-            p.curFrame = i;           // 프레임 번호 (애니메이션용)
-            p.sequence = nextSeq++;    // 시퀀스 번호 (정렬용 - 계속 증가!)
-            p.timestamp = GetTickCount64();
-            batch.push_back(p);
+        // [수신] recv 사용 (넌블로킹)
+        SIM_PACKET recvPkt;
+        while (recv(privateSock, (char*)&recvPkt, sizeof(SIM_PACKET), 0) > 0) {
+            PushHeap(&clientHeap, recvPkt);
         }
 
-        // 의도적으로 순서 뒤섞기 (클라이언트의 힙 정렬 테스트용)
-        std::random_shuffle(batch.begin(), batch.end());
-
-        // 4. 전송
-        for (auto& p : batch) {
-            // connect를 했으므로 sendto 대신 send를 써도 무방함 (더 깔끔!)
-            int retval = send(privateSock, (const char*)&p, sizeof(SIM_PACKET), 0);
-
-            if (retval == SOCKET_ERROR) {
-                printf("[%s] 통신 두절. 전용 채널을 폐쇄합니다.\n", IPAddr);
-                goto THREAD_EXIT; // 루프 탈출 후 정리 로직으로
+        //[판정 및 상태 우선순위] 힙에서 꺼내어 처리
+        SIM_PACKET sortedPkt;
+        while (PopHeap(&clientHeap, &sortedPkt)) {
+            // [HIT 우선순위] 현재 HIT 상태가 아닐 때만 공격을 받음 (무적 판정)
+            if (currentState != HIT && sortedPkt.type == ATTACK) {
+                currentState = HIT;
+                currentFrame = 0;
+                printf("[%s:%d] Hit 판정! 상태 전환: HIT\n", IPAddr, port);
             }
         }
 
-        Sleep(50); // 전송 속도 조절
+        // [송신 패킷 생성] GenerateNextPacket 활용
+        std::vector<SIM_PACKET> batch;
+        for (int i = 0; i < 5; i++) {
+            SIM_PACKET p;
+            GenerateNextPacket(p, currentState, currentFrame, nextSeq);
+            batch.push_back(p);
+        }
+
+        // 지터 시뮬레이션을 위한 셔플
+        std::random_shuffle(batch.begin(), batch.end());
+
+        // ⑤ [전송]
+        for (auto& p : batch) {
+            // 네트워크 지연 시뮬레이션
+            Sleep(10 + rand() % 20);
+            int retval = send(privateSock, (const char*)&p, sizeof(SIM_PACKET), 0);
+
+            if (retval == SOCKET_ERROR) {
+                if (WSAGetLastError() != WSAEWOULDBLOCK) {
+                    printf("[%s:%d] 연결 종료됨\n", IPAddr, port);
+                    goto THREAD_EXIT;
+                }
+            }
+        }
+
+        Sleep(30); // CPU 과부하 방지
     }
 
 THREAD_EXIT:
-    // 5. [핵심] 자원 해제
-    // 여기서 안 닫아주면 소켓 핸들 누수가 발생함!
+    DestroyHeap(&clientHeap);
     closesocket(privateSock);
     return 0;
 }
+
 // 클라이언트 식별을 위한 키 생성 함수 (IP:Port)
 std::string GetClientKey(sockaddr_in& addr) {
     char ip[INET_ADDRSTRLEN];
@@ -153,17 +174,22 @@ void GenerateNextPacket(SIM_PACKET& p, int& state, int& frame, int& seq) {
 
     frame++;
 
-    // 해당 스레드의 상태 전이 로직
+    // 현재 상태의 애니메이션이 끝났는지 확인 (g_stateMaxFrame 배열 사용)
     if (frame >= g_stateMaxFrame[state]) {
-        frame = 0;
-        if (state == ATTACK || state == HIT || state == PARRY) {
+        frame = 0; // 프레임 초기화
+
+        // [상태 전이 로직]
+        if (state == HIT || state == ATTACK || state == PARRY) {
+            // 피격, 공격, 패리 동작이 끝나면 기본 대기(IDLE)로 복귀
             state = IDLE;
         }
         else {
+            // IDLE이나 MOVE 상태일 때는 다음 행동을 랜덤 결정
             int r = rand() % 10;
-            if (r < 5) state = IDLE;
-            else if (r < 8) state = MOVE;
-            else state = ATTACK;
+            if (r < 4) state = IDLE;       // 60% 확률 대기
+            else if (r < 6) state = MOVE;  // 30% 확률 이동
+            else if (r < 8) state = GUARD;
+            else state = ATTACK;           // 10% 확률 공격
         }
     }
 }
