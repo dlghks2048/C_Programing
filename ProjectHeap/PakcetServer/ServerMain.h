@@ -7,14 +7,13 @@
 int g_stateMaxFrame[MAX_STATE] = {4, 7, 6, 4, 7, 5, 4};
 bool g_SimulationMode = false;
 int g_JitterRange = 100;        // 지연폭 (0~100ms)
+std::map<std::string, bool> g_clientList; //클라이언트를 체크하기 위한 맵
 
 // 클라이언트 정보를 스레드에 넘기기 위한 구조체
 typedef struct THREAD_PARAM {
     SOCKET sock;
     sockaddr_in clientaddr;
 } THREAD_PARAM;
-
-std::map<std::string, bool> g_clientList; //클라이언트를 체크하기 위한 맵
 
 void err_display(const char* msg);                                          //소켓 오류 함수 출력
 unsigned int WINAPI StreamThread(LPVOID arg);                               // 패킷 전송 스레드
