@@ -123,7 +123,7 @@ unsigned int WINAPI StreamThread(LPVOID arg) {
                     //[패링 판정] 가드를 올리는 찰나(4번)에 맞음
                     currentState = PARRY;
                     currentFrame = 0;
-                    printf("[JUDGE] 저스트 패링 성공! (Server State: PARRY)\n");
+                    printf("[JUDGE] 패링 성공! (Server State: PARRY)\n");
                 }
                 else if (currentState == IDLE2) {
                     //[가드 판정] 이미 가드 중(6번)일 때 맞음
@@ -210,10 +210,10 @@ void GenerateNextPacket(SIM_PACKET& p, int& state, int& frame, int& seq) {
 
         case IDLE2:
             // 6번(가드 유지) 중에도 일정 확률로 가드를 풀거나 다시 공격
-            int r1 = rand() % 10;
-            if (r1 < 7) state = IDLE2;  // 70% 확률로 가드 계속 유지
-            else if (r1 < 9) state = IDLE;
-            else state = ATTACK;
+            int r2 = rand() % 10;
+            if (r2 < 3) state = IDLE2;      // 30% 유지
+            else if (r2 < 8) state = IDLE;  // 50% 가드 해제
+            else state = ATTACK;            // 20% 기습 공격
             break;
 
         case IDLE:
