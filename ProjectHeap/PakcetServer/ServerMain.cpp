@@ -156,7 +156,7 @@ unsigned int WINAPI StreamThread(LPVOID arg) {
             SIM_PACKET p;
             GenerateNextPacket(p, currentState, currentFrame, nextSeq);
             send(privateSock, (const char*)&p, sizeof(SIM_PACKET), 0);
-            Sleep(20); // 50FPS 정도 유지
+            Sleep(50); // 50FPS 정도 유지
         }
         else {
             // [Sim 모드] 5개 묶음 셔플 전송
