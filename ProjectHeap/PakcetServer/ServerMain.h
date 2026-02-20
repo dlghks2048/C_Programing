@@ -7,7 +7,6 @@
 int g_stateMaxFrame[MAX_STATE] = {4, 7, 6, 4, 7, 5, 4};
 bool g_SimulationMode = false;
 int g_JitterRange = 100;        // 지연폭 (0~100ms)
-long long g_lastEcho = 0;         // 가잔 최근 패킷의 시간
 std::map<std::string, bool> g_clientList; //클라이언트를 체크하기 위한 맵
 
 // 클라이언트 정보를 스레드에 넘기기 위한 구조체

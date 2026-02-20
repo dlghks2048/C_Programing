@@ -124,6 +124,7 @@ unsigned int WINAPI StreamThread(LPVOID arg) {
     int currentState = IDLE;
     int currentFrame = 0;
     int nextSeq = 0;
+    long long lastEcho = 0;
 
     // 클라이언트 전용 힙 생성 및 초기화
     PacketHeap clientHeap;
@@ -145,7 +146,7 @@ unsigned int WINAPI StreamThread(LPVOID arg) {
                 printf("[%s:%d] 클라이언트가 스스로 종료를 알렸습니다.\n", IPAddr, port);
                 goto THREAD_EXIT;
             }
-            g_lastEcho = sortedPkt.timestamp; // 가장 최근 패킷의 시간을 저장
+            lastEcho = sortedPkt.timestamp; // 가장 최근 패킷의 시간을 저장
 
             if (sortedPkt.type == ATTACK) { // 클라이언트가 나(서버)를 때렸을 때
 
@@ -173,7 +174,7 @@ unsigned int WINAPI StreamThread(LPVOID arg) {
         if (!g_SimulationMode) {
             // [Clean 모드] 
             SIM_PACKET p;
-            GenerateNextPacket(p, currentState, currentFrame, nextSeq);
+            GenerateNextPacket(p, currentState, currentFrame, nextSeq, lastEcho);
             send(privateSock, (const char*)&p, sizeof(SIM_PACKET), 0);
             Sleep(50); // 50FPS 정도 유지
         }
@@ -182,7 +183,7 @@ unsigned int WINAPI StreamThread(LPVOID arg) {
             std::vector<SIM_PACKET> batch;
             for (int i = 0; i < 5; i++) {
                 SIM_PACKET p;
-                GenerateNextPacket(p, currentState, currentFrame, nextSeq);
+                GenerateNextPacket(p, currentState, currentFrame, nextSeq, lastEcho);
                 batch.push_back(p);
             }
             std::random_shuffle(batch.begin(), batch.end());
@@ -209,11 +210,11 @@ std::string GetClientKey(sockaddr_in& addr) {
     return std::string(ip) + ":" + std::to_string(ntohs(addr.sin_port));
 }
 
-void GenerateNextPacket(SIM_PACKET& p, int& state, int& frame, int& seq) {
+void GenerateNextPacket(SIM_PACKET& p, int& state, int& frame, int& seq, long long lastEcho) {
     p.type = state;
     p.curFrame = frame;
     p.sequence = seq++;
-    p.timestamp = g_lastEcho;
+    p.timestamp = lastEcho;
 
     frame++;
 
