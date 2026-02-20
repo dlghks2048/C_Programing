@@ -188,6 +188,7 @@
     <ClInclude Include="framework.h" />
     <ClInclude Include="GUI_MFC_HeapSorting.h" />
     <ClInclude Include="GUI_MFC_HeapSortingDlg.h" />
+    <ClInclude Include="Network.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="targetver.h" />
