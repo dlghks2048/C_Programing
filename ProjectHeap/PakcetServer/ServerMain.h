@@ -1,6 +1,7 @@
 #pragma once
 #include <map>
 #include <string>
+#include "../Protocol.h"
 
 // 각 상태별 애니메이션 총 프레임 수 정의
 int g_stateMaxFrame[MAX_STATE] = {4, 7, 6, 4, 7, 5, 4};

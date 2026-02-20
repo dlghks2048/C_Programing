@@ -117,6 +117,13 @@ unsigned int WINAPI StreamThread(LPVOID arg) {
         //[판정 및 상태 우선순위] 힙에서 꺼내어 처리
         SIM_PACKET sortedPkt;
         while (PopHeap(&clientHeap, &sortedPkt)) {
+            if (sortedPkt.type == -1) { // 클라이언트의 종료 신호 (나 뒤짐)
+                printf("[%s:%d] 클라이언트가 스스로 종료를 알렸습니다.\n", IPAddr, port);
+                DestroyHeap(&clientHeap);
+                closesocket(privateSock);
+                return 0;
+            }
+
             if (sortedPkt.type == ATTACK) { // 클라이언트가 나(서버)를 때렸을 때
 
                 if (currentState == GUARD) {
@@ -192,6 +199,8 @@ void GenerateNextPacket(SIM_PACKET& p, int& state, int& frame, int& seq) {
     if (frame >= g_stateMaxFrame[state]) {
         frame = 0;
 
+        int r1 = rand() % 10;
+        int r2 = rand() % 10;
         // [세부 상태 전이 로직]
         switch (state) {
         case HIT:
@@ -202,7 +211,6 @@ void GenerateNextPacket(SIM_PACKET& p, int& state, int& frame, int& seq) {
             break;
 
         case GUARD:
-            int r1 = rand() % 10;
             if (r1 < 7) state = IDLE2;  // 70% 확률로 가드 계속 유지
             else if (r1 < 9) state = IDLE;
             else state = ATTACK;
@@ -210,7 +218,6 @@ void GenerateNextPacket(SIM_PACKET& p, int& state, int& frame, int& seq) {
 
         case IDLE2:
             // 6번(가드 유지) 중에도 일정 확률로 가드를 풀거나 다시 공격
-            int r2 = rand() % 10;
             if (r2 < 3) state = IDLE2;      // 30% 유지
             else if (r2 < 8) state = IDLE;  // 50% 가드 해제
             else state = ATTACK;            // 20% 기습 공격
