@@ -117,11 +117,25 @@ unsigned int WINAPI StreamThread(LPVOID arg) {
         //[판정 및 상태 우선순위] 힙에서 꺼내어 처리
         SIM_PACKET sortedPkt;
         while (PopHeap(&clientHeap, &sortedPkt)) {
-            // [HIT 우선순위] 현재 HIT 상태가 아닐 때만 공격을 받음 (무적 판정)
-            if (currentState != HIT && sortedPkt.type == ATTACK) {
-                currentState = HIT;
-                currentFrame = 0;
-                printf("[%s:%d] Hit 판정! 상태 전환: HIT\n", IPAddr, port);
+            if (sortedPkt.type == ATTACK) { // 클라이언트가 나(서버)를 때렸을 때
+
+                if (currentState == GUARD) {
+                    //[패링 판정] 가드를 올리는 찰나(4번)에 맞음
+                    currentState = PARRY;
+                    currentFrame = 0;
+                    printf("[JUDGE] 저스트 패링 성공! (Server State: PARRY)\n");
+                }
+                else if (currentState == IDLE2) {
+                    //[가드 판정] 이미 가드 중(6번)일 때 맞음
+                    // 상태 변화 없음 (방패 이펙트는 클라이언트가 알아서 함)
+                    printf("[JUDGE] 가드로 방어함. (Server State 유지)\n");
+                }
+                else if (currentState != HIT && currentState != PARRY) {
+                    //[피격 판정] 무방비 상태(IDLE, MOVE 등)에서 맞음
+                    currentState = HIT;
+                    currentFrame = 0;
+                    printf("[JUDGE] 적중! (Server State: HIT)\n");
+                }
             }
         }
 
@@ -174,22 +188,44 @@ void GenerateNextPacket(SIM_PACKET& p, int& state, int& frame, int& seq) {
 
     frame++;
 
-    // 현재 상태의 애니메이션이 끝났는지 확인 (g_stateMaxFrame 배열 사용)
+    // 현재 상태의 애니메이션이 끝났는지 확인
     if (frame >= g_stateMaxFrame[state]) {
-        frame = 0; // 프레임 초기화
+        frame = 0;
 
-        // [상태 전이 로직]
-        if (state == HIT || state == ATTACK || state == PARRY) {
-            // 피격, 공격, 패리 동작이 끝나면 기본 대기(IDLE)로 복귀
+        // [세부 상태 전이 로직]
+        switch (state) {
+        case HIT:
+        case ATTACK:
+        case PARRY:
+            // 큰 동작이 끝나면 일단 IDLE로 복귀
             state = IDLE;
-        }
-        else {
-            // IDLE이나 MOVE 상태일 때는 다음 행동을 랜덤 결정
+            break;
+
+        case GUARD:
+            int r1 = rand() % 10;
+            if (r1 < 7) state = IDLE2;  // 70% 확률로 가드 계속 유지
+            else if (r1 < 9) state = IDLE;
+            else state = ATTACK;
+            break;
+
+        case IDLE2:
+            // 6번(가드 유지) 중에도 일정 확률로 가드를 풀거나 다시 공격
+            int r1 = rand() % 10;
+            if (r1 < 7) state = IDLE2;  // 70% 확률로 가드 계속 유지
+            else if (r1 < 9) state = IDLE;
+            else state = ATTACK;
+            break;
+
+        case IDLE:
+        case MOVE:
+        default:
+            // 일반 상태에서의 랜덤 행동
             int r = rand() % 10;
-            if (r < 4) state = IDLE;       // 60% 확률 대기
-            else if (r < 6) state = MOVE;  // 30% 확률 이동
-            else if (r < 8) state = GUARD;
-            else state = ATTACK;           // 10% 확률 공격
+            if (r < 4) state = IDLE;
+            else if (r < 6) state = MOVE;
+            else if (r < 8) state = GUARD; // 가드 올리기 시도
+            else state = ATTACK;
+            break;
         }
     }
 }
