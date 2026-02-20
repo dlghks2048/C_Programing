@@ -188,7 +188,7 @@
     <ClInclude Include="framework.h" />
     <ClInclude Include="GUI_MFC_HeapSorting.h" />
     <ClInclude Include="GUI_MFC_HeapSortingDlg.h" />
-    <ClInclude Include="Network.h" />
+    <ClInclude Include="CNetwork.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="targetver.h" />
@@ -199,6 +199,9 @@
     </ClCompile>
     <ClCompile Include="GUI_MFC_HeapSorting.cpp" />
     <ClCompile Include="GUI_MFC_HeapSortingDlg.cpp" />
+    <ClCompile Include="CNetwork.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>

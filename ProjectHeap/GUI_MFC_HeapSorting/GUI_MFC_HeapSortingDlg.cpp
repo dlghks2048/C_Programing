@@ -108,7 +108,7 @@ BOOL CGUIMFCHeapSortingDlg::OnInitDialog()
 		}
 	}
 
-	SetTimer(1, 100, NULL);
+	SetTimer(1, 50, NULL);
 
 	// IDM_ABOUTBOX는 시스템 명령 범위에 있어야 합니다.
 	ASSERT((IDM_ABOUTBOX & 0xFFF0) == IDM_ABOUTBOX);
