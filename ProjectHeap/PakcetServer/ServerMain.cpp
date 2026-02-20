@@ -145,6 +145,7 @@ unsigned int WINAPI StreamThread(LPVOID arg) {
                 printf("[%s:%d] 클라이언트가 스스로 종료를 알렸습니다.\n", IPAddr, port);
                 goto THREAD_EXIT;
             }
+            g_lastEcho = sortedPkt.timestamp; // 가장 최근 패킷의 시간을 저장
 
             if (sortedPkt.type == ATTACK) { // 클라이언트가 나(서버)를 때렸을 때
 
@@ -212,7 +213,7 @@ void GenerateNextPacket(SIM_PACKET& p, int& state, int& frame, int& seq) {
     p.type = state;
     p.curFrame = frame;
     p.sequence = seq++;
-    p.timestamp = GetTickCount64();
+    p.timestamp = g_lastEcho;
 
     frame++;
 
