@@ -10,7 +10,7 @@ public:
 
     // 기본 통신 관련
     bool InitAndConnect(const char* szIP, int nPort);   // 초기화 및 서버 접속 (나 접속할거야! 신호 포함)
-    void SendPacket(int nType);                         // 서버에 내 액션(공격 등) 전송
+    void SendPacket(int state, int frame);                         // 서버에 내 액션(공격 등) 전송
     void Disconnect();                                  // 다잉 메시지 발송 및 종료
 
 
@@ -32,6 +32,7 @@ private:
     HANDLE       m_hThread;         // 수신 스레드 핸들
     bool         m_bIsRunning;      // 스레드 제어 플래그
     int          m_nPing;           // 실시간 지연 시간(ms)
+    int m_nNextSequence;            // 패킷마다 1씩 증가시킬 시퀀스
 
     // 버퍼링 임계값 (예: 5개 쌓이기 전엔 멈춰있기)
     const int    m_nBufferThreshold = 5;
