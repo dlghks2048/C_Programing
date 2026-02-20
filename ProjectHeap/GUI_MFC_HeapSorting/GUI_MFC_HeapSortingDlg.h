@@ -5,6 +5,7 @@
 #pragma once
 #include <gdiplus.h>
 #include "CPacketHeap.h"
+#include "../Protocol.h"
 #pragma comment(lib, "gdiplus.lib")
 
 #define CHARACTOR_HEIGHT 64

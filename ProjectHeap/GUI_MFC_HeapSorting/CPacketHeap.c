@@ -10,17 +10,17 @@ void PushHeap(PacketHeap* pHp, SIM_PACKET pkt) {
 
     if (pHp->size >= MAX_HEAP_SIZE) {
         LeaveCriticalSection(&pHp->cs);
-        return; // 꽉 참
+        return;
     }
 
     int curr = pHp->size++;
     pHp->heapArray[curr] = pkt;
 
-    // Up-Heap: 부모와 비교하여 위로
+    // Up-Heap: sequence 번호가 작을수록 위로 (Min-Heap)
     while (curr > 0) {
         int parent = (curr - 1) / 2;
-        if (pHp->heapArray[curr].timestamp < pHp->heapArray[parent].timestamp) {
-            // Swap
+        // 내 시퀀스가 부모보다 작으면 위로 올라감
+        if (pHp->heapArray[curr].sequence < pHp->heapArray[parent].sequence) {
             SIM_PACKET temp = pHp->heapArray[curr];
             pHp->heapArray[curr] = pHp->heapArray[parent];
             pHp->heapArray[parent] = temp;
@@ -37,22 +37,23 @@ int PopHeap(PacketHeap* pHp, SIM_PACKET* pOutPkt) {
 
     if (pHp->size <= 0) {
         LeaveCriticalSection(&pHp->cs);
-        return 0; // 비어있음
+        return 0;
     }
 
-    *pOutPkt = pHp->heapArray[0]; // 루트(최소값) 추출
-    pHp->heapArray[0] = pHp->heapArray[--pHp->size]; // 맨 뒤 요소를 루트로
+    // 루트(시퀀스 번호가 가장 작은 패킷) 추출
+    *pOutPkt = pHp->heapArray[0];
+    pHp->heapArray[0] = pHp->heapArray[--pHp->size];
 
     int curr = 0;
-    // Down-Heap: 자식과 비교하여 아래로
+    // Down-Heap: 자식들 중 더 작은 시퀀스를 가진 쪽과 교체
     while (1) {
         int left = curr * 2 + 1;
         int right = curr * 2 + 2;
         int smallest = curr;
 
-        if (left < pHp->size && pHp->heapArray[left].timestamp < pHp->heapArray[smallest].timestamp)
+        if (left < pHp->size && pHp->heapArray[left].sequence < pHp->heapArray[smallest].sequence)
             smallest = left;
-        if (right < pHp->size && pHp->heapArray[right].timestamp < pHp->heapArray[smallest].timestamp)
+        if (right < pHp->size && pHp->heapArray[right].sequence < pHp->heapArray[smallest].sequence)
             smallest = right;
 
         if (smallest != curr) {
