@@ -17,71 +17,6 @@
 #define SERVERPORT 9000
 #define BUFSIZE 256
 
-
-
-// 소켓 함수 오류 출력
-void err_display(const char* msg) {
-    LPVOID lpMsgBuf;
-    FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM,
-        NULL, WSAGetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-        (LPSTR)&lpMsgBuf, 0, NULL);
-    printf("[%s] %s\n", msg, (char*)lpMsgBuf);
-    LocalFree(lpMsgBuf);
-}
-
-// [전담 스레드] 특정 클라이언트에게 무한히 패킷을 쏘는 역할
-unsigned int WINAPI StreamThread(LPVOID arg) {
-    THREAD_PARAM* param = (THREAD_PARAM*)arg;
-    SOCKET sock = param->sock;
-    sockaddr_in clientaddr = param->clientaddr;
-    int addrlen = sizeof(clientaddr);
-
-    int nextSeq = 0;
-
-    char IPAddr[INET_ADDRSTRLEN];
-    inet_ntop(AF_INET, &clientaddr.sin_addr, IPAddr, sizeof(IPAddr));
-    printf("[%s:%d] 전용 스트리밍 스레드 시작!\n", IPAddr, ntohs(clientaddr.sin_port));
-
-    delete param; // 동적 할당된 메모리 해제
-
-    while (1) {
-        // 5개씩 묶어서 셔플 전송
-        std::vector<SIM_PACKET> batch;
-        for (int i = 0; i < 5; i++) {
-            SIM_PACKET p;
-            p.type = ATTACK;
-            p.curFrame = i;
-            p.sequence = nextSeq++;
-            p.timestamp = GetTickCount64();
-            batch.push_back(p);
-        }
-
-        std::random_shuffle(batch.begin(), batch.end());
-
-        // 다이어트된 사이즈로 발송
-        for (auto& p : batch) {
-            int retval = sendto(sock, (const char*)&p, sizeof(SIM_PACKET), 0,
-                (struct sockaddr*)&clientaddr, addrlen);
-
-            if (retval == SOCKET_ERROR) {
-                printf("[%s] 클라이언트 연결 끊김으로 판단, 스레드 종료.\n", IPAddr);
-                return 0; // 클라이언트가 소켓을 닫거나 문제가 생기면 스레드 자폭
-            }
-        }
-
-        // 스트리밍 속도 조절 (초당 약 100개 패킷)
-        Sleep(50);
-    }
-    return 0;
-}
-
-// 클라이언트 식별을 위한 키 생성 함수 (IP:Port)
-std::string GetClientKey(sockaddr_in& addr) {
-    char ip[INET_ADDRSTRLEN];
-    inet_ntop(AF_INET, &addr.sin_addr, ip, sizeof(ip));
-    return std::string(ip) + ":" + std::to_string(ntohs(addr.sin_port));
-}
-
 int main() {
     int retval;
 
@@ -133,4 +68,102 @@ int main() {
     closesocket(sock);
     WSACleanup();
     return 0;
+}
+
+// 소켓 함수 오류 출력
+void err_display(const char* msg) {
+    LPVOID lpMsgBuf;
+    FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM,
+        NULL, WSAGetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+        (LPSTR)&lpMsgBuf, 0, NULL);
+    printf("[%s] %s\n", msg, (char*)lpMsgBuf);
+    LocalFree(lpMsgBuf);
+}
+
+// [전담 스레드] 특정 클라이언트에게 무한히 패킷을 쏘는 역할
+unsigned int WINAPI StreamThread(LPVOID arg) {
+    // 1. 파라미터 복사 및 메모리 해제 (누수 방지)
+    THREAD_PARAM* param = (THREAD_PARAM*)arg;
+    sockaddr_in clientaddr = param->clientaddr;
+    SOCKET mainSock = param->sock; // 사실 이건 이제 안 써도 됨 (전용 소켓 쓸 거니까)
+    delete param;
+
+    int nextSeq = 0; // 시퀀스 초기화 (이 클라이언트만의 번호)
+    int addrlen = sizeof(clientaddr);
+    char IPAddr[INET_ADDRSTRLEN];
+    inet_ntop(AF_INET, &clientaddr.sin_addr, IPAddr, sizeof(IPAddr));
+
+    // 2.  전용 소켓 생성 및 고정
+    SOCKET privateSock = socket(AF_INET, SOCK_DGRAM, 0);
+    if (connect(privateSock, (struct sockaddr*)&clientaddr, addrlen) == SOCKET_ERROR) {
+        closesocket(privateSock);
+        return 0;
+    }
+
+    printf("[%s:%d] 전용 채널 생성 완료. 스트리밍 시작!\n", IPAddr, ntohs(clientaddr.sin_port));
+
+    // 3. 무한 루프 시작
+    while (1) {
+        // [중요] 기존의 패킷 생성 및 셔플링 로직 복구
+        std::vector<SIM_PACKET> batch;
+        for (int i = 0; i < 5; i++) {
+            SIM_PACKET p;
+            p.type = ATTACK;
+            p.curFrame = i;           // 프레임 번호 (애니메이션용)
+            p.sequence = nextSeq++;    // 시퀀스 번호 (정렬용 - 계속 증가!)
+            p.timestamp = GetTickCount64();
+            batch.push_back(p);
+        }
+
+        // 의도적으로 순서 뒤섞기 (클라이언트의 힙 정렬 테스트용)
+        std::random_shuffle(batch.begin(), batch.end());
+
+        // 4. 전송
+        for (auto& p : batch) {
+            // connect를 했으므로 sendto 대신 send를 써도 무방함 (더 깔끔!)
+            int retval = send(privateSock, (const char*)&p, sizeof(SIM_PACKET), 0);
+
+            if (retval == SOCKET_ERROR) {
+                printf("[%s] 통신 두절. 전용 채널을 폐쇄합니다.\n", IPAddr);
+                goto THREAD_EXIT; // 루프 탈출 후 정리 로직으로
+            }
+        }
+
+        Sleep(50); // 전송 속도 조절
+    }
+
+THREAD_EXIT:
+    // 5. [핵심] 자원 해제
+    // 여기서 안 닫아주면 소켓 핸들 누수가 발생함!
+    closesocket(privateSock);
+    return 0;
+}
+// 클라이언트 식별을 위한 키 생성 함수 (IP:Port)
+std::string GetClientKey(sockaddr_in& addr) {
+    char ip[INET_ADDRSTRLEN];
+    inet_ntop(AF_INET, &addr.sin_addr, ip, sizeof(ip));
+    return std::string(ip) + ":" + std::to_string(ntohs(addr.sin_port));
+}
+
+void GenerateNextPacket(SIM_PACKET& p, int& state, int& frame, int& seq) {
+    p.type = state;
+    p.curFrame = frame;
+    p.sequence = seq++;
+    p.timestamp = GetTickCount64();
+
+    frame++;
+
+    // 해당 스레드의 상태 전이 로직
+    if (frame >= g_stateMaxFrame[state]) {
+        frame = 0;
+        if (state == ATTACK || state == HIT || state == PARRY) {
+            state = IDLE;
+        }
+        else {
+            int r = rand() % 10;
+            if (r < 5) state = IDLE;
+            else if (r < 8) state = MOVE;
+            else state = ATTACK;
+        }
+    }
 }

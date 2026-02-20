@@ -8,7 +8,7 @@
 #pragma comment(lib, "gdiplus.lib")
 
 #define CHARACTOR_HEIGHT 64
-#define MAX_STATE 7
+
 
 // CGUIMFCHeapSortingDlg 대화 상자
 class CGUIMFCHeapSortingDlg : public CDialogEx

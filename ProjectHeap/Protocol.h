@@ -5,6 +5,7 @@
 // 패킷 타입 정의
 #define SERVER_IP   "127.0.0.1"
 #define SERVER_PORT 9000
+#define MAX_STATE 7
 
 // 객체의 상태 정의 (패킷 정의)
 #define IDLE        0   //평소 상태
@@ -14,6 +15,7 @@
 #define GUARD       4   //방어(공격에만 상호작용이 일으키는 신호)
 #define PARRY       5   //특수한 경우에만 보내는 패킷, 가드 신호와 공격 신호의 오차가 굉장히 적을때(0.2초 이내?)
 #define IDLE2       6   // 방패를 든 채 대기하는 상태
+
 
 // 메인 패킷 구조체
 typedef struct SIM_PACKET {
