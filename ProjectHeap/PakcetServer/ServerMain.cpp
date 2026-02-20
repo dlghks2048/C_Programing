@@ -11,6 +11,7 @@
 #include <process.h>
 #include "ServerMain.h"
 #include "sequenceMinHeap.h"
+#include <conio.h>
 #include "../Protocol.h"
 
 #pragma comment(lib, "ws2_32")
@@ -39,8 +40,13 @@ int main() {
     retval = bind(sock, (struct sockaddr*)&serveraddr, sizeof(serveraddr));
     if (retval == SOCKET_ERROR) err_display("bind()");
 
+    _beginthreadex(NULL, 0, ControlThread, NULL, 0, NULL);  // 컨트롤 스레드 실행
+    UpdateStatus();                                         // 초기 UI 출력
+
     printf("--- 패킷 정렬 시뮬레이션 서버 가동 ---\n");
     printf("포트 번호: %d (UDP IPv4)\n", SERVERPORT);
+
+
 
     while (1) {
         sockaddr_in clientaddr;
@@ -119,9 +125,7 @@ unsigned int WINAPI StreamThread(LPVOID arg) {
         while (PopHeap(&clientHeap, &sortedPkt)) {
             if (sortedPkt.type == -1) { // 클라이언트의 종료 신호 (나 뒤짐)
                 printf("[%s:%d] 클라이언트가 스스로 종료를 알렸습니다.\n", IPAddr, port);
-                DestroyHeap(&clientHeap);
-                closesocket(privateSock);
-                return 0;
+                goto THREAD_EXIT;
             }
 
             if (sortedPkt.type == ATTACK) { // 클라이언트가 나(서버)를 때렸을 때
@@ -147,31 +151,30 @@ unsigned int WINAPI StreamThread(LPVOID arg) {
         }
 
         // [송신 패킷 생성] GenerateNextPacket 활용
-        std::vector<SIM_PACKET> batch;
-        for (int i = 0; i < 5; i++) {
+        if (!g_SimulationMode) {
+            // [Clean 모드] 
             SIM_PACKET p;
             GenerateNextPacket(p, currentState, currentFrame, nextSeq);
-            batch.push_back(p);
+            send(privateSock, (const char*)&p, sizeof(SIM_PACKET), 0);
+            Sleep(20); // 50FPS 정도 유지
         }
+        else {
+            // [Sim 모드] 5개 묶음 셔플 전송
+            std::vector<SIM_PACKET> batch;
+            for (int i = 0; i < 5; i++) {
+                SIM_PACKET p;
+                GenerateNextPacket(p, currentState, currentFrame, nextSeq);
+                batch.push_back(p);
+            }
+            std::random_shuffle(batch.begin(), batch.end());
 
-        // 지터 시뮬레이션을 위한 셔플
-        std::random_shuffle(batch.begin(), batch.end());
-
-        // ⑤ [전송]
-        for (auto& p : batch) {
-            // 네트워크 지연 시뮬레이션
-            Sleep(10 + rand() % 20);
-            int retval = send(privateSock, (const char*)&p, sizeof(SIM_PACKET), 0);
-
-            if (retval == SOCKET_ERROR) {
-                if (WSAGetLastError() != WSAEWOULDBLOCK) {
-                    printf("[%s:%d] 연결 종료됨\n", IPAddr, port);
-                    goto THREAD_EXIT;
-                }
+            for (auto& p : batch) {
+                // 전역 변수 g_JitterRange를 사용하여 지연폭 조절
+                int jitter = rand() % g_JitterRange;
+                Sleep(jitter);
+                send(privateSock, (const char*)&p, sizeof(SIM_PACKET), 0);
             }
         }
-
-        Sleep(30); // CPU 과부하 방지
     }
 
 THREAD_EXIT:
@@ -235,4 +238,35 @@ void GenerateNextPacket(SIM_PACKET& p, int& state, int& frame, int& seq) {
             break;
         }
     }
+}
+
+void UpdateStatus() {
+    // 커서를 맨 위(0,0)로 이동 (Windows API 사용)
+    HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+    COORD coord = { 0, 0 };
+    SetConsoleCursorPosition(hOut, coord);
+
+    printf("==========================================\n");
+    printf(" [MODE] %-15s | [JITTER] %3d ms\n",
+        g_SimulationMode ? "SIMULATION (LAG)" : "CLEAN (NORMAL)", g_JitterRange);
+    printf(" 명령어: 1(일반), 2(렉), +(증가), -(감소) \n");
+    printf("==========================================\n\n");
+}
+
+// 키보드 입력 및 화면 갱신 전용 스레드
+unsigned int WINAPI ControlThread(LPVOID arg) {
+    while (1) {
+        if (_kbhit()) {
+            char ch = _getch();
+            if (ch == '1') g_SimulationMode = false;
+            else if (ch == '2') g_SimulationMode = true;
+            else if (ch == '+') g_JitterRange += 50;
+            else if (ch == '-') g_JitterRange = (g_JitterRange > 50) ? g_JitterRange - 50 : 0;
+
+            // 키를 누를 때마다 상단 상태창 갱신
+            UpdateStatus();
+        }
+        Sleep(100);
+    }
+    return 0;
 }
