@@ -1,9 +1,11 @@
 ﻿
 // GUI_MFC_HeapSortingDlg.cpp: 구현 파일
 //
-
 #include "pch.h"
 #include "framework.h"
+
+
+#include <string>
 #include "GUI_MFC_HeapSorting.h"
 #include "GUI_MFC_HeapSortingDlg.h"
 #include "afxdialogex.h"
@@ -84,6 +86,9 @@ END_MESSAGE_MAP()
 BOOL CGUIMFCHeapSortingDlg::OnInitDialog()
 {
 	CDialogEx::OnInitDialog();
+
+	// IDC_EDIT_IP 에 초기 주소 삽입
+	SetDlgItemText(IDC_EDIT_IP, _T(SERVER_IP));
 
 	//리스트 컨트롤러 초기화
 	CListCtrl* pList = (CListCtrl*)GetDlgItem(IDC_LIST_PACKET);
@@ -569,9 +574,25 @@ void CGUIMFCHeapSortingDlg::OnLButtonDown(UINT nFlags, CPoint point)
 
 void CGUIMFCHeapSortingDlg::OnBnClickedButtonConnect()
 {
-	// 네트워크 초기화 및 서버 접속
-	if (m_net.InitAndConnect(SERVER_IP, SERVER_PORT)) {
-		printf("서버 접속 시도 중... (IP: %s, Port: %d)\n", SERVER_IP, SERVER_PORT);
+	CString strIP;
+	GetDlgItemText(IDC_EDIT_IP, strIP);
+
+	if (strIP.IsEmpty()) {
+		AfxMessageBox(_T("IP 주소를 입력해주세요!"));
+		return;
+	}
+
+	// 헤더만 있으면 이제 이 줄에서 에러 안 남!
+	std::string serverIP = (CT2CA)strIP;
+
+	// 접속 시도
+	if (m_net.InitAndConnect(serverIP.c_str(), 9000)) { // SERVER_PORT 대신 9000
+		AfxMessageBox(_T("서버 접속 성공!"));
+	}
+	else {
+		CString strError;
+		strError.Format(_T("서버에 접속할 수 없습니다.\n입력하신 IP: %s\n서버 상태를 확인하세요."), strIP); 
+		AfxMessageBox(strError, MB_ICONERROR | MB_OK);
 	}
 }
 
