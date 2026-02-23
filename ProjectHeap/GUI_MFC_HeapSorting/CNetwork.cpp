@@ -16,53 +16,67 @@ CNetwork::~CNetwork() {
 }
 
 bool CNetwork::InitAndConnect(const char* szIP, int nPort) {
-    // 1. 소켓 생성 및 주소 설정 (기존 코드)
-    m_sock = socket(AF_INET, SOCK_DGRAM, 0);
-    sockaddr_in servAddr;
-    memset(&servAddr, 0, sizeof(servAddr));
-    servAddr.sin_family = AF_INET;
-    servAddr.sin_port = htons(nPort);
-    if (inet_pton(AF_INET, szIP, &servAddr.sin_addr) <= 0) {
-        closesocket(m_sock);
+    WSADATA wsa;
+    if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0) return false;    //윈속 초기화
+
+    //소켓 생성 및 주소 설정 
+    m_sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    if (m_sock == INVALID_SOCKET) return false;
+
+    m_serverAddr.sin_family = AF_INET;
+    m_serverAddr.sin_port = htons(nPort);
+    if (inet_pton(AF_INET, szIP, &m_serverAddr.sin_addr) != 1) {
         return false;
     }
 
-    // 2. 서버에 트리거 패킷 전송 (먼저 찌르기)
-    SIM_PACKET trigger;
-    memset(&trigger, 0, sizeof(trigger));
-    trigger.type = HELLOW;
-    sendto(m_sock, (char*)&trigger, sizeof(SIM_PACKET), 0, (sockaddr*)&servAddr, sizeof(servAddr));
+    // 패킷 초기화
+    SIM_PACKET helloPkt;
+    memset(&helloPkt, 0, sizeof(SIM_PACKET));
+    helloPkt.type = HELLOW; // 100
+    helloPkt.curFrame = 0;
+    helloPkt.sequence = 0;
+    helloPkt.timestamp = 0;
+    // 패킷 전송 == 연결 요청
+    sendto(m_sock, (const char*)&helloPkt, sizeof(SIM_PACKET), 0,
+        (sockaddr*)&m_serverAddr, sizeof(m_serverAddr));
 
     // 3. 서버 응답 대기 (타임아웃 설정)
     struct timeval tv;
-    tv.tv_sec = 5; 
+    tv.tv_sec = 2;
     tv.tv_usec = 0;
     setsockopt(m_sock, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof(tv));
 
+
+    // 응답 패킷 선언
     SIM_PACKET recvPkt;
     sockaddr_in fromAddr;
     int addrLen = sizeof(fromAddr);
 
+
     // HELLOW 패킷이 오는지 직접 확인
     int nRev = recvfrom(m_sock, (char*)&recvPkt, sizeof(SIM_PACKET), 0, (sockaddr*)&fromAddr, &addrLen);
+    if (nRev == SOCKET_ERROR) {     // 오류 디버깅
+        int err = WSAGetLastError();
+        printf("recvfrom error: %d\n", err);
+    }
 
+    // 구조체 변수명 type 체크
     if (nRev > 0 && recvPkt.type == HELLOW) {
-        if (connect(m_sock, (sockaddr*)&fromAddr, sizeof(fromAddr)) == SOCKET_ERROR) {
-            return false;
-        }
+        connect(m_sock, (sockaddr*)&fromAddr, sizeof(fromAddr));
+
         // 타임아웃 해제
         tv.tv_sec = 0;
         setsockopt(m_sock, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof(tv));
 
         m_bIsRunning = true;
         m_hThread = (HANDLE)_beginthreadex(NULL, 0, ReceiveThread, this, 0, NULL);
-        return true;
+        return m_bIsRunning;
     }
 
     // [실패] 응답 없으면 소켓 닫고 종료
     closesocket(m_sock);
     m_sock = INVALID_SOCKET;
-    return false;
+    return m_bIsRunning;
 }
 
 void CNetwork::Disconnect() {

@@ -58,8 +58,6 @@ int main() {
     SafeLog("--- 패킷 정렬 시뮬레이션 서버 가동 ---");
     SafeLog("포트 번호: %d (UDP IPv4)", SERVERPORT);
 
-
-
     while (1) {
         sockaddr_in clientaddr;
         int addrlen = sizeof(clientaddr);
@@ -67,6 +65,14 @@ int main() {
 
         int retval = recvfrom(sock, (char*)&trigger, sizeof(SIM_PACKET), 0,
             (struct sockaddr*)&clientaddr, &addrlen);
+
+        //에로 코드 출력
+        if (retval == SOCKET_ERROR) {
+            printf("recvfrom error: %d\n", WSAGetLastError());
+            continue;
+        }
+
+        printf("recvfrom OK, size=%d\n", retval);
 
         // 이미 관리 중인 클라이언트인지 확인
         std::string key = GetClientKey(clientaddr);
