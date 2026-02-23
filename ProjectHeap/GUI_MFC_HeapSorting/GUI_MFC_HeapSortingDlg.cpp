@@ -86,10 +86,10 @@ BOOL CGUIMFCHeapSortingDlg::OnInitDialog()
 	//리스트 컨트롤러 초기화
 	CListCtrl* pList = (CListCtrl*)GetDlgItem(IDC_LIST_PACKET);
 	pList->SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES); // 줄 긋기
-	pList->InsertColumn(0, _T("No"), LVCFMT_LEFT, 50);
+	pList->InsertColumn(0, _T("Seq"), LVCFMT_LEFT, 80);
 	pList->InsertColumn(1, _T("Type"), LVCFMT_LEFT, 80);
-	pList->InsertColumn(2, _T("Seq"), LVCFMT_LEFT, 70);
-	pList->InsertColumn(3, _T("Frame"), LVCFMT_LEFT, 70);
+	pList->InsertColumn(2, _T("Frame"), LVCFMT_LEFT, 70);
+	pList->InsertColumn(3, _T("Ping"), LVCFMT_LEFT, 100);
 	//리스트 컨트롤러 초기화
 
 
@@ -362,31 +362,26 @@ void CGUIMFCHeapSortingDlg::DrawPingGraph(CDC* pDC)
 void CGUIMFCHeapSortingDlg::AddPacketLog(const SIM_PACKET& pkt) {
 	CListCtrl* pList = (CListCtrl*)GetDlgItem(IDC_LIST_PACKET);
 
-	// 1. 새 아이템을 리스트의 맨 아래에 추가
-	int nIndex = pList->GetItemCount();
-	CString strNo;
-	strNo.Format(_T("%d"), nIndex + 1);
-	pList->InsertItem(nIndex, strNo);
-
-	// 2. 패킷 정보 채우기
-	CString strType, strSeq, strFrame;
-	strType.Format(_T("%d"), pkt.type);
+	// 1. 시퀀스 번호를 첫 번째 칸(Item)으로 바로 삽입
+	CString strSeq;
 	strSeq.Format(_T("%d"), pkt.sequence);
+	int nIndex = pList->InsertItem(pList->GetItemCount(), strSeq);
+
+	// 2. 나머지 정보들 삽입
+	CString strType, strFrame, strPing;
+	strType.Format(_T("%d"), pkt.type);
 	strFrame.Format(_T("%d"), pkt.curFrame);
 
+	strPing.Format(_T("%d"), m_net.GetCurrentPing());
+
 	pList->SetItemText(nIndex, 1, strType);
-	pList->SetItemText(nIndex, 2, strSeq);
-	pList->SetItemText(nIndex, 3, strFrame);
+	pList->SetItemText(nIndex, 2, strFrame);
+	pList->SetItemText(nIndex, 3, strPing);
 
-	// 3. [중요] 스크롤을 맨 아래로 강제 이동
+	// 3. 자동 스크롤 및 개수 제한 (기존과 동일)
 	pList->EnsureVisible(nIndex, FALSE);
-
-	// 4. [중요] 버퍼 관리 (최대 100줄만 유지)
-	if (pList->GetItemCount() > 100) {
-		pList->DeleteItem(0); // 맨 위(가장 오래된 로그) 삭제
-	}
+	if (pList->GetItemCount() > 100) pList->DeleteItem(0);
 }
-
 void CGUIMFCHeapSortingDlg::OnTimer(UINT_PTR nIDEvent)
 {
 	if (nIDEvent == 1) {
