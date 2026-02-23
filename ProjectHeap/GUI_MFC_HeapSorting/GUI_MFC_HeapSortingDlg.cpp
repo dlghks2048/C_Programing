@@ -286,7 +286,6 @@ void CGUIMFCHeapSortingDlg::DrawCharacter(CDC* pDC, int x, int y, int state, int
 
 	// 텍스트 출력 로직 
 	const TCHAR* stateNames[] = { _T("IDLE"), _T("MOVE"), _T("ATTACK"), _T("HIT"), _T("GUARD"), _T("PARRY"), _T("GUARDING") };
-	m_currentPing = 75; // 나중에 서버 연동 시 변수로 대체
 
 	CString strStateName;
 	strStateName.Format(_T("[%s]"), stateNames[state]);
@@ -409,46 +408,44 @@ void CGUIMFCHeapSortingDlg::OnTimer(UINT_PTR nIDEvent)
 			}
 		}
 
-		// 2. 가상 패킷 상호작용 로직 (주석 참고)
-		/*
-		SIM_PACKET receivedPacket;
-		if (PeekPacket(&receivedPacket)) { // 패킷이 왔다면
-			if (receivedPacket.type == ATTACK) {
-				// 공격 패킷을 받았을 때 나의 상태에 따른 판정
-				if (m_testState == GUARD) {
-					// 패링 판정: 공격 시각과 내 방어 시각 차이가 0.15초(150ms) 이내라면
-					if (GetTimestamp() - receivedPacket.timestamp < 150) {
-						m_testState = PARRY;
-						m_curFrame = 0;
-					}
-				} else if (m_testState != PARRY) {
-					// 무방비 상태에서 공격 패킷을 받으면 HIT 상태로 전환
-					m_testState = HIT;
-					m_curFrame = 0;
-				}
-			}
-		}
-		*/
-
 		Invalidate(FALSE);
 	}
 	// --- [ID 2] 네트워크 통신 (30ms) ---
 	else if (nIDEvent == 2) {
-		// 서버로 내 현재 상태 보고 
+		// 1. 서버로 내 현재 상태 보고 (서버는 이걸 보고 판정함)
 		m_net.SendPacket(m_curState, m_curFrame);
 
-		// 힙에서 서버 패킷 꺼내오기 (상대 캐릭터 갱신)
+		// 2. 힙에서 서버 패킷 꺼내기 (상대방의 행동)
 		SIM_PACKET enemyPkt;
 		if (m_net.GetNextFrame(&enemyPkt, false)) {
-			AddPacketLog(enemyPkt);							//리스트 컨트롤러에 서버 패킷 출력
+			AddPacketLog(enemyPkt); // 리스트 컨트롤에 기록
 
+			// --- 서버 로직과 동일한 상호작용 판정 시작 ---
+			if (enemyPkt.type == ATTACK) { // 상대방(서버 캐릭터)이 나를 때렸다면
+
+				if (m_curState == GUARD) {
+					// [패링 판정] 가드를 올리는 찰나(4번)에 맞음
+					m_curState = PARRY;
+					m_curFrame = 0;
+				}
+				else if (m_curState == 6) { // IDLE2 (가드 유지 중)
+					// 시간이 되면 이팩트 코드 구현
+				}
+				else if (m_curState != HIT && m_curState != PARRY) {
+					// [피격 판정] 무방비 상태에서 맞음
+					m_curState = HIT;
+					m_curFrame = 0;
+				}
+			}
+			// --- 상호작용 판정 끝 ---
+
+			// 상대방 캐릭터 외형 갱신
 			m_enemyState = enemyPkt.type;
 			m_enemyFrame = enemyPkt.curFrame;
 
-			// 실시간 핑 업데이트 및 히스토리 기록
-			m_currentPing = m_net.GetCurrentPing();
-
-			if (m_historyCount < 200) {
+			// 핑 기록.
+			m_currentPing = m_net.GetCurrentPing();			//캐릭터 위 표현
+			if (m_historyCount < 200) {						//핑 그래프 데이타 기록
 				m_latencyHistory[m_historyCount++] = m_currentPing;
 			}
 			else {
