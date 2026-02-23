@@ -8,6 +8,7 @@
 #include "GUI_MFC_HeapSortingDlg.h"
 #include "afxdialogex.h"
 #include "CNetwork.h"
+#include "resource.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -81,6 +82,17 @@ END_MESSAGE_MAP()
 BOOL CGUIMFCHeapSortingDlg::OnInitDialog()
 {
 	CDialogEx::OnInitDialog();
+
+	//리스트 컨트롤러 초기화
+	CListCtrl* pList = (CListCtrl*)GetDlgItem(IDC_LIST_PACKET);
+	pList->SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES); // 줄 긋기
+	pList->InsertColumn(0, _T("No"), LVCFMT_LEFT, 50);
+	pList->InsertColumn(1, _T("Type"), LVCFMT_LEFT, 80);
+	pList->InsertColumn(2, _T("Seq"), LVCFMT_LEFT, 70);
+	pList->InsertColumn(3, _T("Frame"), LVCFMT_LEFT, 70);
+	//리스트 컨트롤러 초기화
+
+
 
 	// 네트워크 초기화 및 서버 접속
 	if (m_net.InitAndConnect(SERVER_IP, SERVER_PORT)) {
@@ -347,6 +359,34 @@ void CGUIMFCHeapSortingDlg::DrawPingGraph(CDC* pDC)
 	pDC->TextOutW(rect.left + 5, rect.top + 5, strPing);
 }
 
+void CGUIMFCHeapSortingDlg::AddPacketLog(const SIM_PACKET& pkt) {
+	CListCtrl* pList = (CListCtrl*)GetDlgItem(IDC_LIST_PACKET);
+
+	// 1. 새 아이템을 리스트의 맨 아래에 추가
+	int nIndex = pList->GetItemCount();
+	CString strNo;
+	strNo.Format(_T("%d"), nIndex + 1);
+	pList->InsertItem(nIndex, strNo);
+
+	// 2. 패킷 정보 채우기
+	CString strType, strSeq, strFrame;
+	strType.Format(_T("%d"), pkt.type);
+	strSeq.Format(_T("%d"), pkt.sequence);
+	strFrame.Format(_T("%d"), pkt.curFrame);
+
+	pList->SetItemText(nIndex, 1, strType);
+	pList->SetItemText(nIndex, 2, strSeq);
+	pList->SetItemText(nIndex, 3, strFrame);
+
+	// 3. [중요] 스크롤을 맨 아래로 강제 이동
+	pList->EnsureVisible(nIndex, FALSE);
+
+	// 4. [중요] 버퍼 관리 (최대 100줄만 유지)
+	if (pList->GetItemCount() > 100) {
+		pList->DeleteItem(0); // 맨 위(가장 오래된 로그) 삭제
+	}
+}
+
 void CGUIMFCHeapSortingDlg::OnTimer(UINT_PTR nIDEvent)
 {
 	if (nIDEvent == 1) {
@@ -405,6 +445,8 @@ void CGUIMFCHeapSortingDlg::OnTimer(UINT_PTR nIDEvent)
 		// 힙에서 서버 패킷 꺼내오기 (상대 캐릭터 갱신)
 		SIM_PACKET enemyPkt;
 		if (m_net.GetNextFrame(&enemyPkt, false)) {
+			AddPacketLog(enemyPkt);							//리스트 컨트롤러에 서버 패킷 출력
+
 			m_enemyState = enemyPkt.type;
 			m_enemyFrame = enemyPkt.curFrame;
 

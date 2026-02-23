@@ -3,6 +3,7 @@
 //
 
 #pragma once
+#include "reason.h"
 #include <gdiplus.h>
 #include "CPacketHeap.h"
 #include "../Protocol.h"
@@ -45,6 +46,7 @@ public:
 	// 함수 선언
 	void DrawCharacter(CDC* pDC, int x, int y, int state, int frame, bool isEnemy);
 	void DrawPingGraph(CDC* pDC);
+	void AddPacketLog(const SIM_PACKET& pkt);
 
 private:
 	// 변수 선언(캐릭터)
