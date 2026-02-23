@@ -1,8 +1,12 @@
 #define _CRT_SECURE_NO_WARNINGS
 #define _WINSOCK_DEPRECATED_NO_WARNINGS
 
-#include <winsock2.h>
+// 헤더 순서 주의
+#include <winsock2.h> 
 #include <ws2tcpip.h>
+#include <windows.h>  
+
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <vector>
@@ -21,6 +25,9 @@
 
 int main() {
     int retval;
+
+    EnableVTMode();         //가상 콘솔 모드 활성화
+    SetScrollRegion();      //로그 영역 지정
 
     // 윈속 초기화
     WSADATA wsa;
@@ -43,8 +50,8 @@ int main() {
     _beginthreadex(NULL, 0, ControlThread, NULL, 0, NULL);  // 컨트롤 스레드 실행
     UpdateStatus();                                         // 초기 UI 출력
 
-    printf("--- 패킷 정렬 시뮬레이션 서버 가동 ---\n");
-    printf("포트 번호: %d (UDP IPv4)\n", SERVERPORT);
+    SafeLog("--- 패킷 정렬 시뮬레이션 서버 가동 ---");
+    SafeLog("포트 번호: %d (UDP IPv4)", SERVERPORT);
 
 
 
@@ -59,7 +66,7 @@ int main() {
         // 이미 관리 중인 클라이언트인지 확인
         std::string key = GetClientKey(clientaddr);
         if (g_clientList.find(key) != g_clientList.end()) {
-            printf("[Info] %s는 이미 스트리밍 중입니다.\n", key.c_str());
+            SafeLog("[Info] %s는 이미 스트리밍 중입니다.", key.c_str());
             continue;
         }
 
@@ -85,7 +92,7 @@ void err_display(const char* msg) {
     FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM,
         NULL, WSAGetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
         (LPSTR)&lpMsgBuf, 0, NULL);
-    printf("[%s] %s\n", msg, (char*)lpMsgBuf);
+    SafeLog("[%s] %s", msg, (char*)lpMsgBuf);
     LocalFree(lpMsgBuf);
 }
 
@@ -98,7 +105,7 @@ unsigned int WINAPI StreamThread(LPVOID arg) {
 
     // clientAddr의 주소를 가진 클라이언트에만 보내겠다는 선언(binding + connetc)
     if (connect(privateSock, (sockaddr*)&clientAddr, sizeof(clientAddr)) == SOCKET_ERROR) {
-        printf("Connect Error!\n");
+        SafeLog("Connect Error!");
         closesocket(privateSock);
         return 0;
     }
@@ -108,7 +115,7 @@ unsigned int WINAPI StreamThread(LPVOID arg) {
     memset(&helloPkt, 0, sizeof(SIM_PACKET));
     helloPkt.type = HELLOW; 
     if (send(privateSock, (char*)&helloPkt, sizeof(SIM_PACKET), 0) == SOCKET_ERROR) {
-        printf("[Error] 답장 패킷 전송 실패\n");
+        SafeLog("[Error] 답장 패킷 전송 실패");
         closesocket(privateSock);
         return 0;
     }
@@ -132,7 +139,7 @@ unsigned int WINAPI StreamThread(LPVOID arg) {
     PacketHeap* pClientHeap = new PacketHeap();
     InitHeap(pClientHeap);
 
-    printf("[%s:%d] 전용 스트림 스레드 시작\n", IPAddr, port);
+    SafeLog("[%s:%d] 전용 스트림 스레드 시작", IPAddr, port);
 
     while (1) {
         // [수신] recv 사용 (넌블로킹)
@@ -145,7 +152,7 @@ unsigned int WINAPI StreamThread(LPVOID arg) {
         SIM_PACKET sortedPkt;
         while (PopHeap(pClientHeap, &sortedPkt)) {
             if (sortedPkt.type == -1) { // 클라이언트의 종료 신호 (나 뒤짐)
-                printf("[%s:%d] 클라이언트가 스스로 종료를 알렸습니다.\n", IPAddr, port);
+                SafeLog("[%s:%d] 클라이언트가 스스로 종료를 알렸습니다.", IPAddr, port);
                 goto THREAD_EXIT;
             }
             lastEcho = sortedPkt.timestamp; // 가장 최근 패킷의 시간을 저장
@@ -156,18 +163,18 @@ unsigned int WINAPI StreamThread(LPVOID arg) {
                     //[패링 판정] 가드를 올리는 찰나(4번)에 맞음
                     currentState = PARRY;
                     currentFrame = 0;
-                    printf("[JUDGE] 패링 성공! (Server State: PARRY)\n");
+                    SafeLog("[%s:%d] 패링 성공! (Server State: PARRY)", IPAddr, port);
                 }
                 else if (currentState == IDLE2) {
                     //[가드 판정] 이미 가드 중(6번)일 때 맞음
                     // 상태 변화 없음 (방패 이펙트는 클라이언트가 알아서 함)
-                    printf("[JUDGE] 가드로 방어함. (Server State 유지)\n");
+                    SafeLog("[%s:%d] 가드로 방어함. (Server State 유지)", IPAddr, port);
                 }
                 else if (currentState != HIT && currentState != PARRY) {
                     //[피격 판정] 무방비 상태(IDLE, MOVE 등)에서 맞음
                     currentState = HIT;
                     currentFrame = 0;
-                    printf("[JUDGE] 적중! (Server State: HIT)\n");
+                    SafeLog("[%s:%d] 적중! (Server State: HIT)", IPAddr, port);
                 }
             }
         }
@@ -264,16 +271,27 @@ void GenerateNextPacket(SIM_PACKET& p, int& state, int& frame, int& seq, long lo
 }
 
 void UpdateStatus() {
-    // 커서를 맨 위(0,0)로 이동 (Windows API 사용)
+    // 현재 커서 위치 저장 (로그 찍던 위치 기억)
+    printf("\x1b[s");
+
     HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
-    COORD coord = { 0, 0 };
-    SetConsoleCursorPosition(hOut, coord);
+    CONSOLE_SCREEN_BUFFER_INFO csbi;
+    GetConsoleScreenBufferInfo(hOut, &csbi);
+
+    int windowHeight = csbi.srWindow.Bottom - csbi.srWindow.Top + 1;
+    SHORT menuStartLine = (SHORT)(windowHeight - MENU_HEIGHT + 1);
+
+    // 메뉴 시작 위치로 이동
+    printf("\x1b[%d;1H", menuStartLine);
 
     printf("==========================================\n");
     printf(" [MODE] %-15s | [JITTER] %3d ms\n",
         g_SimulationMode ? "SIMULATION (LAG)" : "CLEAN (NORMAL)", g_JitterRange);
     printf(" 명령어: 1(일반), 2(렉), +(증가), -(감소) \n");
-    printf("==========================================\n\n");
+    printf("=========================================="); // 마지막 \n 제거!
+
+    // 원래 커서 위치로 복구
+    printf("\x1b[u");
 }
 
 // 키보드 입력 및 화면 갱신 전용 스레드
@@ -292,4 +310,48 @@ unsigned int WINAPI ControlThread(LPVOID arg) {
         Sleep(100);
     }
     return 0;
+}
+
+void SafeLog(const char* fmt, ...) {
+    HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+    CONSOLE_SCREEN_BUFFER_INFO csbi;
+    GetConsoleScreenBufferInfo(hOut, &csbi);
+
+    // 로그 영역의 맨 마지막 줄(메뉴 바로 윗줄) 좌표 계산
+    int windowHeight = csbi.srWindow.Bottom - csbi.srWindow.Top + 1;
+    SHORT logBottomLine = (SHORT)(windowHeight - MENU_HEIGHT);
+
+    // 1. 커서를 로그 영역의 끝으로 이동
+    printf("\x1b[%d;1H", logBottomLine);
+
+    // 2. 실제 로그 출력
+    va_list args;
+    va_start(args, fmt);
+    vprintf(fmt, args);
+    va_end(args);
+    printf("\n"); // 여기서 한 줄 내려가면서 스크롤 발생!
+
+    // 하단 메뉴가 깨지지 않게 다시 그려줌
+    UpdateStatus();
+}
+// ANSI 모드(가상 터미널) 활성화 
+void EnableVTMode() {
+    HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+    DWORD dwMode = 0;
+    GetConsoleMode(hOut, &dwMode);
+    dwMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
+    SetConsoleMode(hOut, dwMode);
+}
+
+// 스크롤 영역 설정 
+void SetScrollRegion() {
+    HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+    CONSOLE_SCREEN_BUFFER_INFO csbi;
+    GetConsoleScreenBufferInfo(hOut, &csbi);
+
+    int windowHeight = csbi.srWindow.Bottom - csbi.srWindow.Top + 1;
+    int logBottom = windowHeight - MENU_HEIGHT;
+
+    // ANSI 코드: [1;로그바닥r -> 1번 줄부터 logBottom 줄까지만 스크롤 영역으로 지정
+    SafeLog("\x1b[1;%dr", logBottom);
 }

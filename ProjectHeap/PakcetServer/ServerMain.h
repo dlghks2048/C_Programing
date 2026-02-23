@@ -3,6 +3,8 @@
 #include <string>
 #include "../Protocol.h"
 
+#define MENU_HEIGHT 5
+
 // 각 상태별 애니메이션 총 프레임 수 정의
 int g_stateMaxFrame[MAX_STATE] = {4, 7, 6, 4, 7, 5, 4};
 bool g_SimulationMode = false;
@@ -21,3 +23,6 @@ std::string GetClientKey(sockaddr_in& addr);                                //�
 void GenerateNextPacket(SIM_PACKET& p, int& state, int& frame, int& seq, long long lastEcho);   //랜덤 패킷 생성 함수
 void UpdateStatus();                                                        //콘솔창 출력(간단한 명령어)
 unsigned int WINAPI ControlThread(LPVOID arg);                              // 키보드 입력 및 화면 갱신 전용 스레드
+void SafeLog(const char* fmt, ...);                                         // 로그를 메뉴 위쪽 영역에만 남기는 함수
+void EnableVTMode();                                                        // 가상 모드
+void SetScrollRegion();                                                     // 스크롤 영역 지정
