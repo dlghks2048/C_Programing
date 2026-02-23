@@ -8,8 +8,6 @@
 #define IDD_GUI_MFC_HEAPSORTING_DIALOG  102
 #define IDR_MAINFRAME                   128
 #define IDC_SIM_VIEW                    1000
-#define IDC_SLIDER_DELAY                1001
-#define IDC_EDIT_DELAY                  1002
 #define IDC_PING_GRAPH                  1003
 #define IDC_LIST_PECKET                 1006
 

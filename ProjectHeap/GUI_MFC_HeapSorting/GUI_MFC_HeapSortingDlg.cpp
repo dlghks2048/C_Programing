@@ -213,6 +213,9 @@ void CGUIMFCHeapSortingDlg::OnPaint()
 		// 4. 완성된 메모리 도화지를 실제 화면(Picture Control)에 복사
 		CDC* pControlDC = pImgView->GetDC();
 		pControlDC->BitBlt(0, 0, rc.Width(), rc.Height(), &memDC, 0, 0, SRCCOPY);
+		
+
+		DrawPingGraph(&dc);			//핑 크래프 출력
 
 		// 5. 정리
 		pImgView->ReleaseDC(pControlDC);
@@ -290,28 +293,58 @@ void CGUIMFCHeapSortingDlg::DrawCharacter(CDC* pDC, int x, int y, int state, int
 // 2. 핑 그래프 그리기 함수
 void CGUIMFCHeapSortingDlg::DrawPingGraph(CDC* pDC)
 {
+	// 1. Picture Control의 위치를 대화 상자 좌표 기준으로 가져오기
+	CWnd* pPingWnd = GetDlgItem(IDC_PING_GRAPH);
+	if (!pPingWnd) return;
+
 	CRect rect;
-	// 다이얼로그에 배치한 Picture Control의 ID를 사용합니다.
-	GetDlgItem(IDC_PING_GRAPH)->GetClientRect(&rect);
+	pPingWnd->GetWindowRect(&rect);      // 화면 기준 좌표
+	ScreenToClient(&rect);              // 대화 상자 기준 좌표로 변환
 
-	pDC->FillSolidRect(&rect, RGB(30, 30, 30)); // 배경색 (어두운 회색)
+	// 2. 배경 그리기
+	pDC->FillSolidRect(&rect, RGB(30, 30, 30));
 
-	CPen pen(PS_SOLID, 2, RGB(0, 255, 255)); // 하늘색 선
+	// 3. 그래프 그리기 준비
+	CPen pen(PS_SOLID, 1, RGB(0, 255, 255)); // 하늘색 선
 	CPen* pOldPen = pDC->SelectObject(&pen);
 
-	// m_historyCount와 m_latencyHistory는 헤더에 선언되어야 함
-	for (int i = 1; i < m_historyCount; i++) {
-		int x1 = (i - 1) * 5;
-		int x2 = i * 5;
+	// 데이터가 2개 이상 있어야 선을 긋습니다.
+	if (m_historyCount < 2) return;
 
-		// 그래프가 Picture Control 영역을 벗어나지 않도록 계산
-		int y1 = rect.Height() - (m_latencyHistory[i - 1] % rect.Height());
-		int y2 = rect.Height() - (m_latencyHistory[i] % rect.Height());
+	// 그래프 가로 간격 계산 (컨트롤 너비에 맞춰 자동 조절)
+	float xStep = (float)rect.Width() / 199.0f;
+
+	// 핑 최대 기준치
+	float maxHeight = 300.0f;
+
+	for (int i = 1; i < m_historyCount; i++) {
+		// X 좌표 계산
+		int x1 = rect.left + (int)((i - 1) * xStep);
+		int x2 = rect.left + (int)(i * xStep);
+
+		// Y 좌표 계산 (핑 수치가 높을수록 위로 가도록 계산)
+		// m_latencyHistory[i]가 0이면 바닥(rect.bottom), 200이면 천장(rect.top)
+		float val1 = (float)m_latencyHistory[i - 1];
+		float val2 = (float)m_latencyHistory[i];
+
+		if (val1 > maxHeight) val1 = maxHeight;
+		if (val2 > maxHeight) val2 = maxHeight;
+
+		int y1 = rect.bottom - (int)((val1 / maxHeight) * rect.Height());
+		int y2 = rect.bottom - (int)((val2 / maxHeight) * rect.Height());
 
 		pDC->MoveTo(x1, y1);
 		pDC->LineTo(x2, y2);
 	}
+
 	pDC->SelectObject(pOldPen);
+
+	// 현재 핑 수치 텍스트 표시
+	CString strPing;
+	strPing.Format(_T("%d ms"), m_latencyHistory[m_historyCount - 1]);
+	pDC->SetTextColor(RGB(0, 255, 255));
+	pDC->SetBkMode(TRANSPARENT);
+	pDC->TextOutW(rect.left + 5, rect.top + 5, strPing);
 }
 
 void CGUIMFCHeapSortingDlg::OnTimer(UINT_PTR nIDEvent)
@@ -462,17 +495,6 @@ BOOL CGUIMFCHeapSortingDlg::PreTranslateMessage(MSG* pMsg)
 			else OnKeyUp((UINT)pMsg->wParam, 0, 0);
 
 			return TRUE; // 여기서 TRUE를 리턴해야 슬라이더나 에디트 박스가 키를 못 훔쳐갑니다.
-		}
-
-		// 2. 캐릭터 키가 아닌 다른 키(숫자 입력 등)인 경우에만 포커스된 컨트롤로 넘깁니다.
-		CWnd* pFocusWnd = GetFocus();
-		if (pFocusWnd && pFocusWnd->GetSafeHwnd())
-		{
-			UINT nID = pFocusWnd->GetDlgCtrlID();
-			if (nID == IDC_EDIT_DELAY || nID == IDC_SLIDER_DELAY)
-			{
-				return CDialogEx::PreTranslateMessage(pMsg);
-			}
 		}
 	}
 	return CDialogEx::PreTranslateMessage(pMsg);
