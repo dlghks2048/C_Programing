@@ -157,7 +157,7 @@ unsigned int WINAPI StreamThread(LPVOID arg) {
             }
             lastEcho = sortedPkt.timestamp; // 가장 최근 패킷의 시간을 저장
 
-            if (sortedPkt.type == ATTACK) { // 클라이언트가 나(서버)를 때렸을 때
+            if (sortedPkt.type == ATTACK || sortedPkt.type == PARRY) { // 클라이언트가 나(서버)를 때렸을 때
                 if (sortedPkt.curFrame >= 1 && sortedPkt.curFrame <= 3) {
 
                     if (currentState == GUARD) {

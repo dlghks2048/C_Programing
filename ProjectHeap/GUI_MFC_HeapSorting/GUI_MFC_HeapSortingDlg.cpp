@@ -126,7 +126,7 @@ BOOL CGUIMFCHeapSortingDlg::OnInitDialog()
 		}
 	}
 	// 애니메이션 타이머
-	SetTimer(1, 50, NULL);
+	SetTimer(1, 70, NULL);
 	// 네트워크 로직 전용 타이머 
 	SetTimer(2, 30, NULL);
 
@@ -385,7 +385,6 @@ void CGUIMFCHeapSortingDlg::OnTimer(UINT_PTR nIDEvent)
 {
 	if (nIDEvent == 1) {
 		m_curFrame++;
-
 		// 현재 상태의 최대 프레임에 도달했을 때
 		if (m_curFrame >= m_maxFrames[m_curState]) {
 			if (m_curState == GUARD) {
@@ -421,7 +420,7 @@ void CGUIMFCHeapSortingDlg::OnTimer(UINT_PTR nIDEvent)
 			AddPacketLog(enemyPkt); // 리스트 컨트롤에 기록
 
 			// --- 서버 로직과 동일한 상호작용 판정 시작 ---
-			if (enemyPkt.type == ATTACK) {
+			if (enemyPkt.type == ATTACK || enemyPkt.type == PARRY) {
 				// [중복 판정 방지]
 				// 마지막으로 맞았던 시퀀스(m_lastHitSeq)보다 현재 패킷의 시퀀스가 확실히 커야 함
 				if (enemyPkt.sequence > m_lastHitSeq) {
