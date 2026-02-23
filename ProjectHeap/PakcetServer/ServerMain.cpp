@@ -273,7 +273,7 @@ void GenerateNextPacket(SIM_PACKET& p, int& state, int& frame, int& seq, long lo
 }
 
 void UpdateStatus() {
-    // 현재 커서 위치 저장 (로그 찍던 위치 기억)
+    // 현재 커서 위치 저장
     printf("\x1b[s");
 
     HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
@@ -303,8 +303,8 @@ unsigned int WINAPI ControlThread(LPVOID arg) {
             char ch = _getch();
             if (ch == '1') g_SimulationMode = false;
             else if (ch == '2') g_SimulationMode = true;
-            else if (ch == '+') g_JitterRange += 50;
-            else if (ch == '-') g_JitterRange = (g_JitterRange > 50) ? g_JitterRange - 50 : 0;
+            else if (ch == '+') g_JitterRange += 10;
+            else if (ch == '-') g_JitterRange = (g_JitterRange > 50) ? g_JitterRange - 10 : 50;
 
             // 키를 누를 때마다 상단 상태창 갱신
             UpdateStatus();

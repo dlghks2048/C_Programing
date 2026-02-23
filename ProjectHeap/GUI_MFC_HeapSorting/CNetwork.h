@@ -20,8 +20,8 @@ public:
     bool GetNextFrame(SIM_PACKET* pOutPkt, bool bIgnoreBuffer = false);
 
     // 통계 정보 (GUI에서 핑 그래프 그릴 때 사용)
-    int GetCurrentPing() { return m_nPing; }
-    int GetHeapSize() { return m_heap.size; }
+    int GetCurrentPing()    { return m_nPing; }
+    int GetHeapSize()       { return m_heap.size; }
 
 private:
     // 통신 전담 스레드 (내부용)

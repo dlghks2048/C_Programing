@@ -23,8 +23,9 @@ typedef struct PacketHeap {
 // 함수 인터페이스
 void InitHeap(PacketHeap* pHp);
 void PushHeap(PacketHeap* pHp, SIM_PACKET pkt);
-int PopHeap(PacketHeap* pHp, SIM_PACKET* pOutPkt); // 성공 시 1, 실패 시 0 반환
+int PopHeap(PacketHeap* pHp, SIM_PACKET* pOutPkt);  // 성공 시 1, 실패 시 0 반환
 void DestroyHeap(PacketHeap* pHp);
+
 
 #ifdef __cplusplus
 }

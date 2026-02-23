@@ -74,6 +74,8 @@ BEGIN_MESSAGE_MAP(CGUIMFCHeapSortingDlg, CDialogEx)
 	ON_WM_KEYDOWN()
 	ON_WM_KEYUP()
 	ON_WM_LBUTTONDOWN()
+	ON_BN_CLICKED(IDC_BUTTON_CONNECT, &CGUIMFCHeapSortingDlg::OnBnClickedButtonConnect)
+	ON_BN_CLICKED(IDC_BUTTON_DISCONNECT, &CGUIMFCHeapSortingDlg::OnBnClickedButtonDisconnect)
 END_MESSAGE_MAP()
 
 
@@ -92,12 +94,6 @@ BOOL CGUIMFCHeapSortingDlg::OnInitDialog()
 	pList->InsertColumn(3, _T("Ping"), LVCFMT_LEFT, 100);
 	//리스트 컨트롤러 초기화
 
-
-
-	// 네트워크 초기화 및 서버 접속
-	if (m_net.InitAndConnect(SERVER_IP, SERVER_PORT)) {
-		printf("서버 접속 시도 중... (IP: %s, Port: %d)\n", SERVER_IP, SERVER_PORT);
-	}
 
 	// 캐릭터 이미지 로드
 	CString fileNames[] = {
@@ -411,6 +407,16 @@ void CGUIMFCHeapSortingDlg::OnTimer(UINT_PTR nIDEvent)
 	}
 	// --- [ID 2] 네트워크 통신 (30ms) ---
 	else if (nIDEvent == 2) {
+		static int lastSentState = -1;
+		static int lastSentFrame = -1;
+
+		// 상태나 프레임이 이전과 다를 때만 서버에 전송 (중복 패킷 방지)
+		if (m_curState != lastSentState || m_curFrame != lastSentFrame) {
+			m_net.SendPacket(m_curState, m_curFrame);
+			lastSentState = m_curState;
+			lastSentFrame = m_curFrame;
+		}
+
 		// 1. 서버로 내 현재 상태 보고 (서버는 이걸 보고 판정함)
 		m_net.SendPacket(m_curState, m_curFrame);
 
@@ -453,6 +459,13 @@ void CGUIMFCHeapSortingDlg::OnTimer(UINT_PTR nIDEvent)
 			// 상대방 캐릭터 외형 갱신
 			m_enemyState = enemyPkt.type;
 			m_enemyFrame = enemyPkt.curFrame;
+
+			// 힙 개수 출력
+			int heapCount = m_net.GetHeapSize();
+			CString strHeapCount;
+			strHeapCount.Format(_T("%d"), heapCount);
+			// 에디트 컨트롤에 텍스트 설정
+			SetDlgItemText(IDC_EDIT_HEAP_COUNT, strHeapCount);
 
 			// 핑 기록.
 			m_currentPing = m_net.GetCurrentPing();			//캐릭터 위 표현
@@ -552,4 +565,17 @@ void CGUIMFCHeapSortingDlg::OnLButtonDown(UINT nFlags, CPoint point)
 	this->SetFocus();
 
 	CDialogEx::OnLButtonDown(nFlags, point);
+}
+
+void CGUIMFCHeapSortingDlg::OnBnClickedButtonConnect()
+{
+	// 네트워크 초기화 및 서버 접속
+	if (m_net.InitAndConnect(SERVER_IP, SERVER_PORT)) {
+		printf("서버 접속 시도 중... (IP: %s, Port: %d)\n", SERVER_IP, SERVER_PORT);
+	}
+}
+
+void CGUIMFCHeapSortingDlg::OnBnClickedButtonDisconnect()
+{
+	m_net.Disconnect();
 }
