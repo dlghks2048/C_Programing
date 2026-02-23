@@ -67,6 +67,7 @@ private:
 	int m_currentPing = 0;
 	int m_latencyHistory[200] = { 0, };			// 핑 데이터 저장용 배열
 	int m_historyCount = 0;						// 현재까지 쌓인 데이터 개수
+	int m_lastHitSeq = 0;						// 마지막으로 적용된 hit 판정 패킷의 sequence
 	PacketHeap m_packetHeap;
 
 public:

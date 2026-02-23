@@ -421,20 +421,35 @@ void CGUIMFCHeapSortingDlg::OnTimer(UINT_PTR nIDEvent)
 			AddPacketLog(enemyPkt); // 리스트 컨트롤에 기록
 
 			// --- 서버 로직과 동일한 상호작용 판정 시작 ---
-			if (enemyPkt.type == ATTACK) { // 상대방(서버 캐릭터)이 나를 때렸다면
+			if (enemyPkt.type == ATTACK) {
+				// [중복 판정 방지]
+				// 마지막으로 맞았던 시퀀스(m_lastHitSeq)보다 현재 패킷의 시퀀스가 확실히 커야 함
+				if (enemyPkt.sequence > m_lastHitSeq) {
 
-				if (m_curState == GUARD) {
-					// [패링 판정] 가드를 올리는 찰나(4번)에 맞음
-					m_curState = PARRY;
-					m_curFrame = 0;
-				}
-				else if (m_curState == 6) { // IDLE2 (가드 유지 중)
-					// 시간이 되면 이팩트 코드 구현
-				}
-				else if (m_curState != HIT && m_curState != PARRY) {
-					// [피격 판정] 무방비 상태에서 맞음
-					m_curState = HIT;
-					m_curFrame = 0;
+					// 서버의 공격 애니메이션 중 '실제 타격이 발생하는 프레임'을 지정 (예: 2~4프레임 사이)
+					// m_enemyFrame을 써도 되고, 패킷에 담겨온 enemyPkt.curFrame을 써도 됨
+					if (enemyPkt.curFrame >= 1 && enemyPkt.curFrame <= 3) {
+
+						if (m_curState == GUARD) {
+							m_curState = PARRY;
+							m_curFrame = 0;
+							// 패링 시에도 이 공격 시퀀스는 끝난 걸로 간주
+							m_lastHitSeq = enemyPkt.sequence + (m_maxFrames[ATTACK] - enemyPkt.curFrame);
+						}
+						else if (m_curState == 6) { // IDLE2 (가드 유지)
+							// 가드 중에는 상태 변화가 없으므로 무적 시퀀스 갱신만 해줌 (연타 방지)
+							m_lastHitSeq = enemyPkt.sequence + (m_maxFrames[ATTACK] - enemyPkt.curFrame);
+						}
+						else if (m_curState != HIT && m_curState != PARRY) {
+							m_curState = HIT;
+							m_curFrame = 0;
+
+							// [중요] 공격의 남은 프레임만큼 시퀀스를 '이미 처리됨'으로 간주해서 무시함
+							// 서버가 30ms마다 패킷을 쏘니까, 공격 애니메이션이 끝날 때까지의 시퀀스를 계산
+							int remainingFrames = m_maxFrames[ATTACK] - enemyPkt.curFrame;
+							m_lastHitSeq = enemyPkt.sequence + remainingFrames;
+						}
+					}
 				}
 			}
 			// --- 상호작용 판정 끝 ---
