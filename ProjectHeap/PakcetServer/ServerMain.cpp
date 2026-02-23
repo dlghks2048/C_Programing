@@ -26,8 +26,9 @@
 int main() {
     int retval;
 
-    EnableVTMode();         //가상 콘솔 모드 활성화
-    SetScrollRegion();      //로그 영역 지정(콘솔 크기를 변경하면 함수를 재사용하여 영역 재정의 필요)
+    EnableVTMode();                             //가상 콘솔 모드 활성화
+    SetScrollRegion();                          //로그 영역 지정(콘솔 크기를 변경하면 함수를 재사용하여 영역 재정의 필요)
+    
 
     // 윈속 초기화
     WSADATA wsa;
@@ -101,6 +102,9 @@ unsigned int WINAPI StreamThread(LPVOID arg) {
     THREAD_PARAM* pParam = (THREAD_PARAM*)arg;
     sockaddr_in clientAddr = pParam->clientaddr;
     SOCKET privateSock = socket(AF_INET, SOCK_DGRAM, 0);        //새 소캣 생성
+
+    std::string clientKey = GetClientKey(pParam->clientaddr);   //클라이언트 키 기록
+
     delete pParam; // 파라미터 메모리 해제
 
     // clientAddr의 주소를 가진 클라이언트에만 보내겠다는 선언(binding + connetc)
@@ -139,6 +143,20 @@ unsigned int WINAPI StreamThread(LPVOID arg) {
     PacketHeap* pClientHeap = new PacketHeap();
     InitHeap(pClientHeap);
 
+    int myIdx = -1; // 내가 등록된 인덱스 저장용
+
+    for (int i = 0; i < MAX_CLIENT; i++) {
+        if (!g_Clients[i].bActive) {
+            myIdx = i; // 빈 자리 발견!
+            g_Clients[myIdx].key = clientKey;
+            g_Clients[myIdx].bActive = true;
+            g_Clients[myIdx].heapSize = 0; // 초기화
+            break;
+        }
+    }
+
+    if (myIdx == -1) goto THREAD_EXIT;
+
     SafeLog("[%s:%d] 전용 스트림 스레드 시작", IPAddr, port);
 
     while (1) {
@@ -147,6 +165,8 @@ unsigned int WINAPI StreamThread(LPVOID arg) {
         while (recv(privateSock, (char*)&recvPkt, sizeof(SIM_PACKET), 0) > 0) {
             PushHeap(pClientHeap, recvPkt);
         }
+
+        g_Clients[myIdx].heapSize = pClientHeap->size;
 
         //[판정 및 상태 우선순위] 힙에서 꺼내어 처리
         SIM_PACKET sortedPkt;
@@ -209,6 +229,11 @@ unsigned int WINAPI StreamThread(LPVOID arg) {
     }
 
 THREAD_EXIT:
+    if (myIdx != -1) {
+        g_Clients[myIdx].bActive = false;
+        g_Clients[myIdx].key = "";
+    }
+
     DestroyHeap(pClientHeap);
     delete pClientHeap;
     closesocket(privateSock);
@@ -292,6 +317,29 @@ void UpdateStatus() {
     printf(" 명령어: 1(일반), 2(렉), +(증가), -(감소) \n");
     printf("=========================================="); // 마지막 \n 제거!
 
+    // 우측 영역 지우기 및 타이틀 출력
+    int startCol = 65;
+    int startRow = 2;
+
+    printf("\x1b[%d;%dH\x1b[1;33m[ CLIENT HEAP INFO ]\x1b[0m", startRow, startCol);
+
+    // 2. 클라이언트 리스트 (전역 배열 g_Clients를 그냥 읽음)
+    for (int i = 0; i < MAX_CLIENT; i++) {
+        int currentRow = startRow + 1 + i;
+
+        if (g_Clients[i].bActive) {
+            // \x1b[K 는 그 줄의 끝까지 지워주는 마법의 명령어임
+            printf("\x1b[%d;%dH ID: %-15s | Heap: %3d\x1b[K",
+                currentRow, startCol,
+                g_Clients[i].key.c_str(),
+                g_Clients[i].heapSize);
+        }
+        else {
+            // 안 쓰는 라인은 깨끗하게 지우기 (잔상 제거)
+            if (i < 10) printf("\x1b[%d;%dH\x1b[K", currentRow, startCol);
+        }
+    }
+
     // 원래 커서 위치로 복구
     printf("\x1b[u");
 }
@@ -309,7 +357,7 @@ unsigned int WINAPI ControlThread(LPVOID arg) {
             // 키를 누를 때마다 상단 상태창 갱신
             UpdateStatus();
         }
-        Sleep(100);
+        Sleep(500);
     }
     return 0;
 }

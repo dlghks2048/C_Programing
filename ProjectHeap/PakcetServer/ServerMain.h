@@ -2,20 +2,34 @@
 #include <map>
 #include <string>
 #include "../Protocol.h"
+#include "sequenceMinHeap.h"
 
 #define MENU_HEIGHT 5
+#define MAX_CLIENT 50
 
-// 각 상태별 애니메이션 총 프레임 수 정의
-int g_stateMaxFrame[MAX_STATE] = {4, 7, 6, 4, 7, 5, 4};
-bool g_SimulationMode = false;
-int g_JitterRange = 100;        // 지연폭 (0~100ms)
-std::map<std::string, bool> g_clientList; //클라이언트를 체크하기 위한 맵
 
 // 클라이언트 정보를 스레드에 넘기기 위한 구조체
 typedef struct THREAD_PARAM {
     SOCKET sock;
     sockaddr_in clientaddr;
 } THREAD_PARAM;
+
+// 쓰래드의 힙 정도를 담는 구조체
+typedef struct CLIENT_INFO {
+    std::string key;        // "IP:Port"
+    int heapSize;           // 주소 대신 그냥 '숫자'만 보관!
+    bool bActive;
+} CLIENT_INFO;
+
+CLIENT_INFO g_Clients[MAX_CLIENT];
+std::map<std::string, bool> g_clientList; //클라이언트를 체크하기 위한 맵
+
+
+// 각 상태별 애니메이션 총 프레임 수 정의
+int g_stateMaxFrame[MAX_STATE] = { 4, 7, 6, 4, 7, 5, 4 };
+bool g_SimulationMode = false;
+int g_JitterRange = 100;        // 지연폭 (0~100ms)
+
 
 void err_display(const char* msg);                                          //소켓 오류 함수 출력
 unsigned int WINAPI StreamThread(LPVOID arg);                               // 패킷 전송 스레드
