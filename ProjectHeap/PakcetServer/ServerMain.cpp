@@ -27,7 +27,7 @@ int main() {
     int retval;
 
     EnableVTMode();         //가상 콘솔 모드 활성화
-    SetScrollRegion();      //로그 영역 지정
+    SetScrollRegion();      //로그 영역 지정(콘솔 크기를 변경하면 함수를 재사용하여 영역 재정의 필요)
 
     // 윈속 초기화
     WSADATA wsa;
@@ -158,23 +158,25 @@ unsigned int WINAPI StreamThread(LPVOID arg) {
             lastEcho = sortedPkt.timestamp; // 가장 최근 패킷의 시간을 저장
 
             if (sortedPkt.type == ATTACK) { // 클라이언트가 나(서버)를 때렸을 때
+                if (sortedPkt.curFrame >= 1 && sortedPkt.curFrame <= 3) {
 
-                if (currentState == GUARD) {
-                    //[패링 판정] 가드를 올리는 찰나(4번)에 맞음
-                    currentState = PARRY;
-                    currentFrame = 0;
-                    SafeLog("[%s:%d] 패링 성공! (Server State: PARRY)", IPAddr, port);
-                }
-                else if (currentState == IDLE2) {
-                    //[가드 판정] 이미 가드 중(6번)일 때 맞음
-                    // 상태 변화 없음 (방패 이펙트는 클라이언트가 알아서 함)
-                    SafeLog("[%s:%d] 가드로 방어함. (Server State 유지)", IPAddr, port);
-                }
-                else if (currentState != HIT && currentState != PARRY) {
-                    //[피격 판정] 무방비 상태(IDLE, MOVE 등)에서 맞음
-                    currentState = HIT;
-                    currentFrame = 0;
-                    SafeLog("[%s:%d] 적중! (Server State: HIT)", IPAddr, port);
+                    if (currentState == GUARD) {
+                        //[패링 판정] 가드를 올리는 찰나(4번)에 맞음
+                        currentState = PARRY;
+                        currentFrame = 0;
+                        SafeLog("[%s:%d] 패링 성공! (Server State: PARRY)", IPAddr, port);
+                    }
+                    else if (currentState == IDLE2) {
+                        //[가드 판정] 이미 가드 중(6번)일 때 맞음
+                        // 상태 변화 없음 (방패 이펙트는 클라이언트가 알아서 함)
+                        SafeLog("[%s:%d] 가드로 방어함. (Server State 유지)", IPAddr, port);
+                    }
+                    else if (currentState != HIT && currentState != PARRY) {
+                        //[피격 판정] 무방비 상태(IDLE, MOVE 등)에서 맞음
+                        currentState = HIT;
+                        currentFrame = 0;
+                        SafeLog("[%s:%d] 적중! (Server State: HIT)", IPAddr, port);
+                    }
                 }
             }
         }

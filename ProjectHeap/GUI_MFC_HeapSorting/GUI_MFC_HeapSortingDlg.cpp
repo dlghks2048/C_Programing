@@ -425,9 +425,6 @@ void CGUIMFCHeapSortingDlg::OnTimer(UINT_PTR nIDEvent)
 				// [중복 판정 방지]
 				// 마지막으로 맞았던 시퀀스(m_lastHitSeq)보다 현재 패킷의 시퀀스가 확실히 커야 함
 				if (enemyPkt.sequence > m_lastHitSeq) {
-
-					// 서버의 공격 애니메이션 중 '실제 타격이 발생하는 프레임'을 지정 (예: 2~4프레임 사이)
-					// m_enemyFrame을 써도 되고, 패킷에 담겨온 enemyPkt.curFrame을 써도 됨
 					if (enemyPkt.curFrame >= 1 && enemyPkt.curFrame <= 3) {
 
 						if (m_curState == GUARD) {
