@@ -191,8 +191,8 @@ unsigned int WINAPI StreamThread(LPVOID arg) {
             std::random_shuffle(batch.begin(), batch.end());
 
             for (auto& p : batch) {
-                // 전역 변수 g_JitterRange를 사용하여 지연폭 조절
-                int jitter = rand() % g_JitterRange;
+                // 전역 변수 g_JitterRange를 사용하여 지연폭 조절 (ping == 0에 대한 조건문 추가)
+                int jitter = (g_JitterRange > 0) ? (rand() % g_JitterRange) : 0;
                 Sleep(jitter);
                 send(privateSock, (const char*)&p, sizeof(SIM_PACKET), 0);
             }
