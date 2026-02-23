@@ -26,6 +26,10 @@
 int main() {
     int retval;
 
+    // 콘솔 출력 코드 페이지를 UTF-8(65001)로 설정
+    SetConsoleOutputCP(CP_UTF8);
+    SetConsoleCP(CP_UTF8);
+
     EnableVTMode();                             //가상 콘솔 모드 활성화
     SetScrollRegion();                          //로그 영역 지정(콘솔 크기를 변경하면 함수를 재사용하여 영역 재정의 필요)
     
