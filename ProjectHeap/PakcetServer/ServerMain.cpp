@@ -32,7 +32,7 @@ int main() {
 
     EnableVTMode();                             //가상 콘솔 모드 활성화
     SetScrollRegion();                          //로그 영역 지정(콘솔 크기를 변경하면 함수를 재사용하여 영역 재정의 필요)
-    
+    HideCursor();                               //커서 숨키기
 
     // 윈속 초기화
     WSADATA wsa;
@@ -177,7 +177,7 @@ unsigned int WINAPI StreamThread(LPVOID arg) {
         }
 
         g_Clients[myIdx].heapSize = pClientHeap->size;
-
+        UpdateStatus();
         //[판정 및 상태 우선순위] 힙에서 꺼내어 처리
         SIM_PACKET sortedPkt;
         while (PopHeap(pClientHeap, &sortedPkt)) {
@@ -416,4 +416,19 @@ void SetScrollRegion() {
 
     // ANSI 코드: [1;로그바닥r -> 1번 줄부터 logBottom 줄까지만 스크롤 영역으로 지정
     SafeLog("\x1b[1;%dr", logBottom);
+}
+
+// 커서 숨기기
+void HideCursor() { 
+    HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+    CONSOLE_CURSOR_INFO cursorInfo;
+
+    // 현재 커서 정보를 가져옴
+    GetConsoleCursorInfo(hOut, &cursorInfo);
+
+    // bVisible 멤버를 FALSE로 설정
+    cursorInfo.bVisible = FALSE;
+
+    // 변경된 정보를 적용
+    SetConsoleCursorInfo(hOut, &cursorInfo);
 }

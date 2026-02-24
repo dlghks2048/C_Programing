@@ -40,3 +40,4 @@ unsigned int WINAPI ControlThread(LPVOID arg);                              // �
 void SafeLog(const char* fmt, ...);                                         // 로그를 메뉴 위쪽 영역에만 남기는 함수
 void EnableVTMode();                                                        // 가상 모드
 void SetScrollRegion();                                                     // 스크롤 영역 지정
+void HideCursor();                                                          // 커서 숨키기
