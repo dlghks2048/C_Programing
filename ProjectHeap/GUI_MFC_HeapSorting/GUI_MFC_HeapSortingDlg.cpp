@@ -585,14 +585,24 @@ void CGUIMFCHeapSortingDlg::OnBnClickedButtonConnect()
 	// 헤더만 있으면 이제 이 줄에서 에러 안 남!
 	std::string serverIP = (CT2CA)strIP;
 
-	// 접속 시도
-	if (m_net.InitAndConnect(serverIP.c_str(), 9000)) { // SERVER_PORT 대신 9000
-		AfxMessageBox(_T("서버 접속 성공!"));
+	bool isAlreadyConnected = m_net.Connected(); // 현재 연결 상태 확인
+	bool isConnectAttemptSuccess = false;
+
+	if (!isAlreadyConnected) {// 1. 연결 안 되어 있을 때만 접속 시도
+		isConnectAttemptSuccess = m_net.InitAndConnect(serverIP.c_str(), 9000);
+
+		if (isConnectAttemptSuccess) {
+			AfxMessageBox(_T("서버 접속 성공!"));
+		}
+		else {
+			// 접속 시도했는데 실패한 경우
+			CString strError;
+			strError.Format(_T("서버에 접속할 수 없습니다.\n입력하신 IP: %s\n서버 상태를 확인하세요."), strIP);
+			AfxMessageBox(strError, MB_ICONERROR | MB_OK);
+		}
 	}
 	else {
-		CString strError;
-		strError.Format(_T("서버에 접속할 수 없습니다.\n입력하신 IP: %s\n서버 상태를 확인하세요."), strIP); 
-		AfxMessageBox(strError, MB_ICONERROR | MB_OK);
+		AfxMessageBox(_T("이미 연결된 상태입니다."));
 	}
 }
 

@@ -42,7 +42,7 @@ bool CNetwork::InitAndConnect(const char* szIP, int nPort) {
 
     // 3. 서버 응답 대기 (타임아웃 설정)
     struct timeval tv;
-    tv.tv_sec = 2;
+    tv.tv_sec = 10;
     tv.tv_usec = 0;
     setsockopt(m_sock, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof(tv));
 

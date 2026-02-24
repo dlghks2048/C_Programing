@@ -5,7 +5,7 @@
 #include "sequenceMinHeap.h"
 
 #define MENU_HEIGHT 5
-#define MAX_CLIENT 50
+#define MAX_CLIENT 10
 
 
 // 클라이언트 정보를 스레드에 넘기기 위한 구조체

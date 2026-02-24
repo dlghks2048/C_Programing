@@ -72,7 +72,7 @@ int main() {
             continue;
         }
 
-        printf("recvfrom OK, size=%d\n", retval);
+        printf("연결 요청 받음, size=%d\n", retval);
 
         // 이미 관리 중인 클라이언트인지 확인
         std::string key = GetClientKey(clientaddr);
@@ -182,7 +182,6 @@ unsigned int WINAPI StreamThread(LPVOID arg) {
         SIM_PACKET sortedPkt;
         while (PopHeap(pClientHeap, &sortedPkt)) {
             if (sortedPkt.type == -1) { // 클라이언트의 종료 신호 (나 뒤짐)
-                SafeLog("[%s:%d] 클라이언트가 스스로 종료를 알렸습니다.", IPAddr, port);
                 goto THREAD_EXIT;
             }
             lastEcho = sortedPkt.timestamp; // 가장 최근 패킷의 시간을 저장
@@ -243,6 +242,7 @@ THREAD_EXIT:
         g_Clients[myIdx].bActive = false;
         g_Clients[myIdx].key = "";
     }
+    SafeLog("[%s:%d] 클라이언트가 스스로 종료를 알렸습니다.", IPAddr, port);
 
     DestroyHeap(pClientHeap);
     delete pClientHeap;
@@ -318,35 +318,37 @@ void UpdateStatus() {
     int windowHeight = csbi.srWindow.Bottom - csbi.srWindow.Top + 1;
     SHORT menuStartLine = (SHORT)(windowHeight - MENU_HEIGHT + 1);
 
-    // 메뉴 시작 위치로 이동
+    // 1. 왼쪽 하단: 서버 설정 메뉴 출력
     printf("\x1b[%d;1H", menuStartLine);
-
     printf("==========================================\n");
     printf(" [MODE] %-15s | [JITTER] %3d ms\n",
         g_SimulationMode ? "SIMULATION (LAG)" : "CLEAN (NORMAL)", g_JitterRange);
     printf(" 명령어: 1(일반), 2(렉), +(증가), -(감소) \n");
-    printf("=========================================="); // 마지막 \n 제거!
+    printf("==========================================");
 
-    // 우측 영역 지우기 및 타이틀 출력
-    int startCol = 65;
-    int startRow = 2;
+    // 2. 우측 클라이언트 정보 (메뉴와 겹치지 않게 열 시작점을 뒤로 뺌)
+    int baseCol = 45;      // 메뉴가 42열 정도까지 쓰니까 45열부터 시작하면 안전
+    int colWidth = 25;     // 한 단의 너비
+    int rowsPerCol = 5;    // 한 단에 몇 명씩 세로로 배치할지
 
-    printf("\x1b[%d;%dH\x1b[1;33m[ CLIENT HEAP INFO ]\x1b[0m", startRow, startCol);
-
-    // 2. 클라이언트 리스트 (전역 배열 g_Clients를 그냥 읽음)
     for (int i = 0; i < MAX_CLIENT; i++) {
-        int currentRow = startRow + 1 + i;
+        int colIdx = i / rowsPerCol; // 몇 번째 칸(단)인지
+        int rowIdx = i % rowsPerCol; // 해당 단에서 몇 번째 줄인지
+
+        int targetRow = menuStartLine + rowIdx;
+        int targetCol = baseCol + (colIdx * colWidth);
+
+        // 해당 칸으로 이동
+        printf("\x1b[%d;%dH", targetRow, targetCol);
 
         if (g_Clients[i].bActive) {
-            // \x1b[K 는 그 줄의 끝까지 지워주는 마법의 명령어임
-            printf("\x1b[%d;%dH ID: %-15s | Heap: %3d\x1b[K",
-                currentRow, startCol,
-                g_Clients[i].key.c_str(),
-                g_Clients[i].heapSize);
+            char buf[64];
+            sprintf(buf, "ID:%-8s|H:%3d", g_Clients[i].key.c_str(), g_Clients[i].heapSize);
+            printf("%-24s", buf);
         }
         else {
-            // 안 쓰는 라인은 깨끗하게 지우기 (잔상 제거)
-            if (i < 10) printf("\x1b[%d;%dH\x1b[K", currentRow, startCol);
+            // 비활성 상태: 해당 칸만 공백으로 확실히 지우기
+            printf("%-24s", " ");
         }
     }
 
