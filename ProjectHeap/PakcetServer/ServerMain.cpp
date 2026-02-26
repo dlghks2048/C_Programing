@@ -89,6 +89,7 @@ int main() {
         param->clientaddr = clientaddr;
         _beginthreadex(NULL, 0, StreamThread, param, 0, NULL);
 
+        UpdateStatus();
         Sleep(100);
     }
 
@@ -177,7 +178,6 @@ unsigned int WINAPI StreamThread(LPVOID arg) {
         }
 
         g_Clients[myIdx].heapSize = pClientHeap->size;
-        UpdateStatus();
         //[판정 및 상태 우선순위] 힙에서 꺼내어 처리
         SIM_PACKET sortedPkt;
         while (PopHeap(pClientHeap, &sortedPkt)) {
