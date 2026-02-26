@@ -31,13 +31,14 @@ bool g_SimulationMode = false;
 int g_JitterRange = 100;        // 지연폭 (0~100ms)
 
 
-void err_display(const char* msg);                                          //소켓 오류 함수 출력
-unsigned int WINAPI StreamThread(LPVOID arg);                               // 패킷 전송 스레드
-std::string GetClientKey(sockaddr_in& addr);                                //클라이언트 식별을 위한 키 식별 함수
-void GenerateNextPacket(SIM_PACKET& p, int& state, int& frame, int& seq, long long lastEcho);   //랜덤 패킷 생성 함수
-void UpdateStatus();                                                        //콘솔창 출력(간단한 명령어)
-unsigned int WINAPI ControlThread(LPVOID arg);                              // 키보드 입력 및 화면 갱신 전용 스레드
-void SafeLog(const char* fmt, ...);                                         // 로그를 메뉴 위쪽 영역에만 남기는 함수
-void EnableVTMode();                                                        // 가상 모드
-void SetScrollRegion();                                                     // 스크롤 영역 지정
-void HideCursor();                                                          // 커서 숨키기
+void err_display(const char* msg);                                                              // 소켓 오류 함수 출력
+unsigned int WINAPI StreamThread(LPVOID arg);                                                   // 패킷 전송 스레드
+std::string GetClientKey(sockaddr_in& addr);                                                    // 클라이언트 식별을 위한 키 식별 함수
+void GenerateNextPacket(SIM_PACKET& p, int& state, int& frame, int& seq, long long lastEcho);   // 랜덤 패킷 생성 함수
+void UpdateStatus();                                                                            // 콘솔창 출력(간단한 명령어)
+unsigned int WINAPI ControlThread(LPVOID arg);                                                  // 키보드 입력 및 화면 갱신 전용 스레드
+void SafeLog(const char* fmt, ...);                                                             // 로그를 메뉴 위쪽 영역에만 남기는 함수
+void EnableVTMode();                                                                            // 가상 모드
+void SetScrollRegion();                                                                         // 스크롤 영역 지정
+void HideCursor();                                                                              // 커서 숨키기
+void UpdateHeapStatus();                                                                        // 서버의 멀티 쓰래드 힙 내역 갱신
