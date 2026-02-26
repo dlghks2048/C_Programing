@@ -405,13 +405,15 @@ void HideCursor() {
 void UpdateHeapStatus() {
     printf("\x1b[s"); // 커서 위치 저장
 
-    int baseCol = 45;      // 메뉴가 42열 정도까지 쓰니까 45열부터 시작하면 안전
-    int colWidth = 25;     // 한 단의 너비
-    int rowsPerCol = 5;    // 한 단에 몇 명씩 세로로 배치할지
+    int baseCol = 45;
+    int colWidth = 25;
+    int rowsPerCol = 6;    // [수정] 5줄이 아니라 6줄까지 청소하도록 범위를 늘림
+    int maxCols = 3;       // [수정] 2단(10명)이 아니라 3단까지 넉넉하게 청소 영역 확장
 
-    for (int i = 0; i < MAX_CLIENT; i++) {
-        int colIdx = i / rowsPerCol; // 몇 번째 칸(단)인지
-        int rowIdx = i % rowsPerCol; // 해당 단에서 몇 번째 줄인지
+    // 총 18개(6행 * 3열)의 칸을 루프 돌며 무조건 덮어씌웁니다.
+    for (int i = 0; i < (rowsPerCol * maxCols); i++) {
+        int colIdx = i / rowsPerCol;
+        int rowIdx = i % rowsPerCol;
 
         int targetRow = g_menuStartLine + rowIdx;
         int targetCol = baseCol + (colIdx * colWidth);
@@ -419,18 +421,21 @@ void UpdateHeapStatus() {
         // 해당 칸으로 이동
         printf("\x1b[%d;%dH", targetRow, targetCol);
 
-        if (g_Clients[i].bActive) {
+        // 실제 클라이언트 데이터가 있고, 활성화된 상태일 때만 정보 출력
+        if (i < MAX_CLIENT && g_Clients[i].bActive) {
             char buf[64];
             sprintf(buf, "ID:%-8s|H:%3d", g_Clients[i].key.c_str(), g_Clients[i].heapSize);
-            printf("%-24s", buf);
+            printf("%-24s", buf); // 24칸을 데이터+공백으로 채움
         }
         else {
-            // 비활성 상태: 해당 칸만 공백으로 확실히 지우기
+            // [핵심] 데이터가 없거나, 6번째 줄이거나, 10번 이후 영역은 
+            // 무조건 공백 24칸을 출력해서 기존 잔상을 물리적으로 지워버림
             printf("%-24s", " ");
         }
     }
 
     printf("\x1b[u"); // 커서 위치 복구
+    fflush(stdout);     //버퍼 비우기
 }
 
 // 메뉴 라인 계산, 시작시에, 화면 크기 변경시에 호출
