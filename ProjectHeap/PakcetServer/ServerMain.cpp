@@ -30,9 +30,11 @@ int main() {
     SetConsoleOutputCP(CP_UTF8);
     SetConsoleCP(CP_UTF8);
 
+    SetUILayout();                              //메뉴 라인 계산
     EnableVTMode();                             //가상 콘솔 모드 활성화
     SetScrollRegion();                          //로그 영역 지정(콘솔 크기를 변경하면 함수를 재사용하여 영역 재정의 필요)
     HideCursor();                               //커서 숨키기
+    
 
     // 윈속 초기화
     WSADATA wsa;
@@ -89,7 +91,6 @@ int main() {
         param->clientaddr = clientaddr;
         _beginthreadex(NULL, 0, StreamThread, param, 0, NULL);
 
-        UpdateStatus();
         Sleep(100);
     }
 
@@ -311,15 +312,8 @@ void UpdateStatus() {
     // 현재 커서 위치 저장
     printf("\x1b[s");
 
-    HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
-    CONSOLE_SCREEN_BUFFER_INFO csbi;
-    GetConsoleScreenBufferInfo(hOut, &csbi);
-
-    int windowHeight = csbi.srWindow.Bottom - csbi.srWindow.Top + 1;
-    SHORT menuStartLine = (SHORT)(windowHeight - MENU_HEIGHT + 1);
-
     // 1. 왼쪽 하단: 서버 설정 메뉴 출력
-    printf("\x1b[%d;1H", menuStartLine);
+    printf("\x1b[%d;1H", g_menuStartLine);
     printf("==========================================\n");
     printf(" [MODE] %-15s | [JITTER] %3d ms\n",
         g_SimulationMode ? "SIMULATION (LAG)" : "CLEAN (NORMAL)", g_JitterRange);
@@ -343,6 +337,7 @@ unsigned int WINAPI ControlThread(LPVOID arg) {
             // 키를 누를 때마다 상단 상태창 갱신
             UpdateStatus();
         }
+        UpdateHeapStatus();
         Sleep(500);
     }
     return 0;
@@ -408,13 +403,8 @@ void HideCursor() {
 }
 
 void UpdateHeapStatus() {
-    // 2. 우측 클라이언트 정보 (메뉴와 겹치지 않게 열 시작점을 뒤로 뺌)
-    HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
-    CONSOLE_SCREEN_BUFFER_INFO csbi;
-    GetConsoleScreenBufferInfo(hOut, &csbi);
+    printf("\x1b[s"); // 커서 위치 저장
 
-    int windowHeight = csbi.srWindow.Bottom - csbi.srWindow.Top + 1;
-    SHORT menuStartLine = (SHORT)(windowHeight - MENU_HEIGHT + 1);
     int baseCol = 45;      // 메뉴가 42열 정도까지 쓰니까 45열부터 시작하면 안전
     int colWidth = 25;     // 한 단의 너비
     int rowsPerCol = 5;    // 한 단에 몇 명씩 세로로 배치할지
@@ -423,7 +413,7 @@ void UpdateHeapStatus() {
         int colIdx = i / rowsPerCol; // 몇 번째 칸(단)인지
         int rowIdx = i % rowsPerCol; // 해당 단에서 몇 번째 줄인지
 
-        int targetRow = menuStartLine + rowIdx;
+        int targetRow = g_menuStartLine + rowIdx;
         int targetCol = baseCol + (colIdx * colWidth);
 
         // 해당 칸으로 이동
@@ -439,4 +429,15 @@ void UpdateHeapStatus() {
             printf("%-24s", " ");
         }
     }
+
+    printf("\x1b[u"); // 커서 위치 복구
+}
+
+// 메뉴 라인 계산, 시작시에, 화면 크기 변경시에 호출
+void SetUILayout() {
+    HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+    CONSOLE_SCREEN_BUFFER_INFO csbi;
+    GetConsoleScreenBufferInfo(hOut, &csbi);
+    int windowHeight = csbi.srWindow.Bottom - csbi.srWindow.Top + 1;
+    g_menuStartLine = (SHORT)(windowHeight - MENU_HEIGHT + 1);
 }

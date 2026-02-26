@@ -29,6 +29,7 @@ std::map<std::string, bool> g_clientList; //클라이언트를 체크하기 위�
 int g_stateMaxFrame[MAX_STATE] = { 4, 7, 6, 4, 7, 5, 4 };
 bool g_SimulationMode = false;
 int g_JitterRange = 100;        // 지연폭 (0~100ms)
+SHORT g_menuStartLine = 0;      // 메뉴 라인 계산
 
 
 void err_display(const char* msg);                                                              // 소켓 오류 함수 출력
@@ -42,3 +43,4 @@ void EnableVTMode();                                                            
 void SetScrollRegion();                                                                         // 스크롤 영역 지정
 void HideCursor();                                                                              // 커서 숨키기
 void UpdateHeapStatus();                                                                        // 서버의 멀티 쓰래드 힙 내역 갱신
+void SetUILayout();                                                                             // 메뉴 라인 계산
